@@ -1,5 +1,5 @@
 use binrw::BinRead;
-use log::{debug, error};
+use log::error;
 use serde::Serialize;
 
 // TODO: implement decoder

@@ -84,3 +84,11 @@ pub enum ConstantPoolInfo {
     #[br(magic = 19u8)]
     Package { name_index: u16 },
 }
+
+#[derive(Debug, Clone, BinRead, Serialize)]
+pub struct AttributeInfo {
+    pub attribute_name_index: u16,
+    pub attribute_length: u32,
+    #[br(count = attribute_length)]
+    pub info: Vec<u8>,
+}
