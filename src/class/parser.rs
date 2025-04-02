@@ -1,4 +1,5 @@
 use binrw::{BinRead, BinResult};
+use serde::Serialize;
 use strum::{EnumIter, IntoEnumIterator};
 
 /* From Java SE 23 spec:
@@ -21,18 +22,15 @@ ClassFile {
     attribute_info attributes[attributes_count];
 }
 */
-#[derive(Debug, Clone, BinRead)]
+#[derive(Debug, Clone, BinRead, Serialize)]
 #[br(magic = 0xCAFEBABEu32, big)]
 pub struct ClassFile {
-    #[br(dbg)]
     pub minor_version: u16,
-    #[br(dbg)]
     pub major_version: u16,
-    #[br(dbg)]
     pub constant_pool_count: u16,
-    #[br(dbg, args(constant_pool_count), parse_with = parse_constant_pool)]
+    #[br(args(constant_pool_count), parse_with = parse_constant_pool)]
     pub constant_pool: Vec<ConstantPoolInfo>,
-    #[br(dbg, map = |bits: u16| ClassAccessFlags::from_bits(bits))]
+    #[br(map = |bits: u16| ClassAccessFlags::from_bits(bits))]
     pub access_flags: Vec<ClassAccessFlags>,
     pub this_class: u16,
     pub super_class: u16,
@@ -70,7 +68,7 @@ fn parse_constant_pool(constant_pool_count: u16) -> BinResult<Vec<ConstantPoolIn
     Ok(result)
 }
 
-#[derive(Debug, Clone, BinRead)]
+#[derive(Debug, Clone, BinRead, Serialize)]
 pub enum ConstantPoolInfo {
     #[br(magic = 0u8)]
     Ignored,
@@ -133,7 +131,7 @@ pub enum ConstantPoolInfo {
 }
 
 // TODO: implement decoder
-#[derive(Debug, Clone, BinRead)]
+#[derive(Debug, Clone, BinRead, Serialize)]
 #[br(import(length: u16))]
 pub struct ModifiedUtf8String(
     #[br(count = length, assert(!self_0.contains(&0), "string contains \\0"), assert(!self_0.iter().any(|v| 0xf0 <= *v), "invalid byte in string"))]
@@ -146,7 +144,7 @@ impl AsRef<[u8]> for ModifiedUtf8String {
     }
 }
 
-#[derive(Debug, Clone, Copy, EnumIter)]
+#[derive(Debug, Clone, Copy, EnumIter, Serialize)]
 #[repr(u16)]
 pub enum ClassAccessFlags {
     AccPublic = 0x0001, // 	Declared public; may be accessed from outside its package.
@@ -166,7 +164,7 @@ impl ClassAccessFlags {
     }
 }
 
-#[derive(Debug, Clone, BinRead)]
+#[derive(Debug, Clone, BinRead, Serialize)]
 pub struct FieldInfo {
     #[br(map = |bits: u16| FieldAccessFlags::from_bits(bits))]
     pub access_flags: Vec<FieldAccessFlags>,
@@ -177,7 +175,7 @@ pub struct FieldInfo {
     pub attributes: Vec<AttributeInfo>,
 }
 
-#[derive(Debug, Clone, Copy, EnumIter)]
+#[derive(Debug, Clone, Copy, EnumIter, Serialize)]
 #[repr(u16)]
 pub enum FieldAccessFlags {
     AccPublic = 0x0001,  // 	Declared public; may be accessed from outside its package.
@@ -197,7 +195,7 @@ impl FieldAccessFlags {
     }
 }
 
-#[derive(Debug, Clone, BinRead)]
+#[derive(Debug, Clone, BinRead, Serialize)]
 pub struct MethodInfo {
     #[br(map = |bits: u16| MethodAccessFlags::from_bits(bits))]
     pub access_flags: Vec<MethodAccessFlags>,
@@ -208,7 +206,7 @@ pub struct MethodInfo {
     pub attributes: Vec<AttributeInfo>,
 }
 
-#[derive(Debug, Clone, Copy, EnumIter)]
+#[derive(Debug, Clone, Copy, EnumIter, Serialize)]
 #[repr(u16)]
 pub enum MethodAccessFlags {
     AccPublic = 0x0001,  // 	Declared public; may be accessed from outside its package.
@@ -231,7 +229,7 @@ impl MethodAccessFlags {
     }
 }
 
-#[derive(Debug, Clone, BinRead)]
+#[derive(Debug, Clone, BinRead, Serialize)]
 pub struct AttributeInfo {
     pub attribute_name_index: u16,
     pub attribute_length: u32,

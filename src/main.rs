@@ -17,5 +17,10 @@ fn main() {
 
     let parsed_class = ClassFile::read(&mut content).expect("UNABLE TO PARSE FILE");
 
-    debug!("parsed: {parsed_class:#?}");
+    debug!("Dumping parsed class file...");
+    std::fs::write(
+        "class_dump.json",
+        serde_json::to_string_pretty(&parsed_class).unwrap(),
+    )
+    .unwrap();
 }
