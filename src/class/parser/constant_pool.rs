@@ -55,7 +55,10 @@ pub enum ConstantPoolInfo {
     #[br(magic = 6u8)]
     Double { high_bytes: u32, low_bytes: u32 },
     #[br(magic = 12u8)]
-    NameAndType { name: u16, descriptor_index: u16 },
+    NameAndType {
+        name_index: u16,
+        descriptor_index: u16,
+    },
     #[br(magic = 1u8)]
     Utf8 {
         length: u16,
@@ -64,7 +67,7 @@ pub enum ConstantPoolInfo {
     },
     #[br(magic = 15u8)]
     MethodHandle {
-        reference_kind: u8,
+        reference_kind: MethodKind,
         reference_index: u16,
     },
     #[br(magic = 16u8)]
@@ -91,4 +94,18 @@ pub struct AttributeInfo {
     pub attribute_length: u32,
     #[br(count = attribute_length)]
     pub info: Vec<u8>,
+}
+
+#[derive(Debug, Clone, BinRead, Serialize)]
+pub enum MethodKind {
+    #[br(magic = 1u8)]
+    GetField,
+    GetStatic,
+    PutField,
+    PutStatic,
+    InvokeVirtual,
+    InvokeStatic,
+    InvokeSpecial,
+    NewInvokeSpecial,
+    InvokeInterface,
 }
