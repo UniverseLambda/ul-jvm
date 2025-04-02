@@ -1,4 +1,4 @@
-use binrw::BinRead;
+use binrw::{BinRead, BinResult};
 use strum::{EnumIter, IntoEnumIterator};
 
 /* From Java SE 23 spec:
@@ -30,30 +30,50 @@ pub struct ClassFile {
     pub major_version: u16,
     #[br(dbg)]
     pub constant_pool_count: u16,
-    #[br(dbg, count = if constant_pool_count == 0 { 0 } else { constant_pool_count - 1 })]
+    #[br(dbg, args(constant_pool_count), parse_with = parse_constant_pool)]
     pub constant_pool: Vec<ConstantPoolInfo>,
     #[br(dbg, map = |bits: u16| ClassAccessFlags::from_bits(bits))]
     pub access_flags: Vec<ClassAccessFlags>,
     pub this_class: u16,
     pub super_class: u16,
     pub interfaces_count: u16,
-    #[br(count = if interfaces_count == 0 { 0 } else { interfaces_count - 1 })]
+    #[br(count = interfaces_count)]
     pub interfaces: Vec<u16>,
     pub fields_count: u16,
-    #[br(count = if fields_count == 0 { 0 } else { fields_count - 1 })]
+    #[br(count = fields_count)]
     pub fields: Vec<FieldInfo>,
     pub methods_count: u16,
-    #[br(count = if methods_count == 0 { 0 } else { methods_count - 1 })]
+    #[br(count = methods_count)]
     pub methods: Vec<MethodInfo>,
     pub attributes_count: u16,
-    #[br(count = if attributes_count == 0 { 0 } else { attributes_count - 1 })]
+    #[br(count = attributes_count)]
     pub attributes: Vec<AttributeInfo>,
+}
+
+#[binrw::parser(reader, endian)]
+fn parse_constant_pool(constant_pool_count: u16) -> BinResult<Vec<ConstantPoolInfo>> {
+    let mut result = vec![ConstantPoolInfo::Ignored];
+
+    while result.len() < constant_pool_count as usize {
+        let info = ConstantPoolInfo::read_options(reader, endian, ())?;
+
+        result.push(info.clone());
+
+        if matches!(
+            info,
+            ConstantPoolInfo::Long { .. } | ConstantPoolInfo::Double { .. }
+        ) {
+            result.push(ConstantPoolInfo::Ignored);
+        }
+    }
+
+    Ok(result)
 }
 
 #[derive(Debug, Clone, BinRead)]
 pub enum ConstantPoolInfo {
     #[br(magic = 0u8)]
-    Ignored { _void: u16 },
+    Ignored,
     #[br(magic = 7u8)]
     Class { name_index: u16 },
     #[br(magic = 9u8)]

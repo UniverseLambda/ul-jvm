@@ -3,136 +3,135 @@
         VER MAJOR:                      00 3d
         CONSTANT_POOL_COUNT:            00 32
         CP_TAG[1]:                      0a (CONSTANT_Methodref_info)
-        - class_index:                  00 02
-        - name_and_type_index:          00 03
+        - class_index:                  00 02 (2)
+        - name_and_type_index:          00 03 (3)
         CP_TAG[2]:                      07 (CONSTANT_Class_info)
-        - name_index:                   00 04
+        - name_index:                   00 04 (4)
         CP_TAG[3]:                      0c (CONSTANT_NameAndType_info)
-        - name_index:                   00 05
-        - descriptor_index:             00 06
+        - name_index:                   00 05 (5)
+        - descriptor_index:             00 06 (6)
         CP_TAG[4]:                      01 (CONSTANT_Utf8_info)
-        - length:                       00 10
-        - bytes:                        6a 61 76 61 2f 6c 61 6e 67 2f 4f 62 6a 65 63 74
+        - length:                       00 10 (16)
+        - bytes:                        6a 61 76 61 2f 6c 61 6e 67 2f 4f 62 6a 65 63 74 ("java/lang/Object")
         CP_TAG[5]:                      01 (CONSTANT_Utf8_info)
-        - length:                       00 06
-        - bytes:                        3c 69 6e 69 74 3e
+        - length:                       00 06 (6)
+        - bytes:                        3c 69 6e 69 74 3e ("<init>")
         CP_TAG[6]:                      01 (CONSTANT_Utf8_info)
-        - length:                       00 03
-        - bytes:                        28 29 56
-        CP_TAG[7]:                      05 (CONSTANT_Long_info)
+        - length:                       00 03 (3)
+        - bytes:                        28 29 56 ("()V")
+        CP_TAG[7, 8]:                   05 (CONSTANT_Long_info)
         - high_bytes:                   00 00 00 00
         - low_bytes:                    00 00 00 05
-        CP_TAG[8]:                      05 (CONSTANT_Double_info)
+        CP_TAG[9, 10]:                      05 (CONSTANT_Double_info)
         - high_bytes:                   40 25 00 00
         - low_bytes:                    00 00 00 00
-        CP_TAG[9]:                      09 (CONSTANT_Fieldref_info)
+        CP_TAG[11]:                      09 (CONSTANT_Fieldref_info)
         - class_index:                  00 0c
         - name_and_type_index:          00 0d
-0x0050  CP_TAG[10]:                     07 (CONSTANT_Class_info)
+0x0050  CP_TAG[12]:                     07 (CONSTANT_Class_info)
         - name_index:                   00 0e
-        CP_TAG[11]:                     0c (CONSTANT_NameAndType_info)
+        CP_TAG[13]:                     0c (CONSTANT_NameAndType_info)
         - name_index:                   00 0f
         - descriptor_index:             00 10
-        CP_TAG[12]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[14]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 10
         - bytes:                        6a 61 76 61 2f 6c 61 6e 67 2f 53 79 73  74 65 6d
-        CP_TAG[13]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[15]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 03
         - bytes:                        6f 75 74
-        CP_TAG[14]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[16]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 15
         - bytes:                        4c 6a 61 76 61 2f 69 6f 2f 50 72 69 6e 74 53 74 72 65 61 6d 3b
-        CP_TAG[14]:                     12 (CONSTANT_InvokeDynamic_info)
+        CP_TAG[17]:                     12 (CONSTANT_InvokeDynamic_info)
         - bootstrap_method_attr_index:  00 00
         - name_and_type_index:          00 12
-        CP_TAG[15]:                     0c (CONSTANT_NameAndType_info)
+        CP_TAG[18]:                     0c (CONSTANT_NameAndType_info)
         - name_index:                   00 13
         - descriptor_index:             00 14
         CP_TAG[16]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 17
         - bytes:                        6d 61 6b 65 43 6f 6e 63 61 74 57 69 74 68 43 6f 6e 73 74 61 6e 74 73
-        CP_TAG[17]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[19]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 16
         - bytes:                        28 4a 44 29 4c 6a 61 76 61 2f 6c 61 6e 67 2f 53 74 72 69 6e 67 3b
-        CP_TAG[18]:                     0a (CONSTANT_Methodref_info)
+        CP_TAG[20]:                     0a (CONSTANT_Methodref_info)
         - class_index:                  00 16
         - name_and_type_index:          00 17
-        CP_TAG[19]:                     07 (CONSTANT_Methodref_info)
+        CP_TAG[21]:                     07 (CONSTANT_Methodref_info)
         - name_index:                   00 18
-        CP_TAG[20]:                     0c (CONSTANT_NameAndType_info)
+        CP_TAG[22]:                     0c (CONSTANT_NameAndType_info)
         - name_index:                   00 19
         - descriptor_index:             00 1a
-        CP_TAG[21]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[23]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 13
         - bytes:                        6a 61 76 61 2f 69 6f 2f 50 72 69 6e 74 53 74 72 65 61 6d
-        CP_TAG[22]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[24]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 07
         - bytes:                        70 72 69 6e 74 6c 6e
-        CP_TAG[23]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[25]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 15
         - bytes:                        28 4c 6a 61 76 61 2f 6c 61 6e 67 2f 53 74 72 69 6e 67 3b 29 56
-        CP_TAG[24]:                     07 (CONSTANT_Methodref_info)
+        CP_TAG[26]:                     07 (CONSTANT_Methodref_info)
         - name_index:                   00 1c
-        CP_TAG[25]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[27]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 04
         - bytes:                        4d 61 69 6e
-        CP_TAG[26]:                     01 (CONSTANT_Utf8_info)
-        - length:                       00 04
-        - bytes:                        43 6f 64 65
-        CP_TAG[27]:                     01 (CONSTANT_Utf8_info)
-        - length:                       00 0f
-        - bytes:                        4c 69 6e 65 4e 75 6d 62 65 72 54 61 62 6c 65
         CP_TAG[28]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 04
-        - bytes:                        6d 61 69 6e
+        - bytes:                        43 6f 64 65
         CP_TAG[29]:                     01 (CONSTANT_Utf8_info)
+        - length:                       00 0f
+        - bytes:                        4c 69 6e 65 4e 75 6d 62 65 72 54 61 62 6c 65
+        CP_TAG[30]:                     01 (CONSTANT_Utf8_info)
+        - length:                       00 04
+        - bytes:                        6d 61 69 6e
+        CP_TAG[31]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 16
 0x013a  - bytes:                        28 5b 4c 6a 61 76 61 2f 6c 61 6e 67 2f 53 74 72 69 6e 67 3b 29 56
-        CP_TAG[30]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[32]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 0a
         - bytes:                        53 6f 75 72 63 65 46 69 6c 65
-        CP_TAG[31]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[33]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 09
         - bytes:                        4d 61 69 6e 2e 6a 61 76 61
-        CP_TAG[32]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[34]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 10
         - bytes:                        42 6f 6f 74 73 74 72 61 70 4d 65 74 68 6f 64 73
-        CP_TAG[33]:                     0f (CONSTANT_MethodHandle_info)
+        CP_TAG[35]:                     0f (CONSTANT_MethodHandle_info)
         - reference_kind:               06
         - reference_index:              00 25
-        CP_TAG[34]:                     0a (CONSTANT_Methodref_info)
+        CP_TAG[36]:                     0a (CONSTANT_Methodref_info)
         - class_index:                  00 26
         - name_and_type_index:          00 27
-        CP_TAG[35]:                     07 (CONSTANT_Class_info)
+        CP_TAG[37]:                     07 (CONSTANT_Class_info)
         - name_index:                   00 28
-        CP_TAG[36]:                     0c (CONSTANT_NameAndType_info)
+        CP_TAG[38]:                     0c (CONSTANT_NameAndType_info)
         - name_index:                   00 13
         - descriptor_index:             00 29
-        CP_TAG[37]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[39]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 24
         - bytes:                        6a 61 76 61 2f 6c 61 6e 67 2f 69 6e 76 6f 6b 65 2f 53 74 72 69 6e 67 43 6f 6e 63 61 74 46 61 63 74 6f 72 79
-        CP_TAG[38]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[40]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 98
         - bytes:                        28 4c 6a 61 76 61 2f 6c 61 6e 67 2f 69 6e 76 6f 6b 65 2f 4d 65 74 68 6f 64 48 61 6e 64 6c 65 73 24 4c 6f 6e 64 6c 65 73 24 4c 6f 76 61 2f 6c 61 6e 67 2f  53 74 72 69 6e 67 3b 4c 6a 61 76 61 2f 6c 61 6e  67 2f 69 6e 76 6f 6b 65 2f 4d 65 74 68 6f 64 54 79 70 65 3b 4c 6a 61 76 61 2f 6c 61 6e 67 2f 53  74 72 69 6e 67 3b 5b 4c 6a 61 76 61 2f 6c 61 6e 67 2f 4f 62 6a 65 63 74 3b 29 4c 6a 61 76 61 2f 6c 61 6e 67 2f 69 6e 76 6f 6b 65 2f 43 61 6c 6c 53 69 74 65 3b
-        CP_TAG[39]:                     08 (CONSTANT_String_info)
+        CP_TAG[41]:                     08 (CONSTANT_String_info)
         - string_index:                 00 2b
-        CP_TAG[40]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[42]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 0f
         - bytes:                        5a 41 52 4d 41 3a 20 01 20 57 4f 57 3a 20 01
-        CP_TAG[41]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[43]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 0c
         - bytes:                        49 6e 6e 65 72 43 6c 61 73 73 65 73
-        CP_TAG[42]:                     07 (CONSTANT_Class_info)
+        CP_TAG[44]:                     07 (CONSTANT_Class_info)
         - name_index:                   00 2e
-        CP_TAG[43]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[45]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 25
         - bytes:                        6a 61 76 61 2f 6c 61 6e 67 2f 69 6e 76 6f 6b 65 2f 4d 65 74 68 6f 64 48 61 6e 64 6c 65 73 24 4c 6f 6f 6b 75 70
-        CP_TAG[44]:                     07 (CONSTANT_Class_info)
+        CP_TAG[46]:                     07 (CONSTANT_Class_info)
         - name_index:                   00 30
-        CP_TAG[45]:                     01 (CONSTANT_Utf8_info)
+        CP_TAG[47]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 1e
         - bytes:                        6a 61 76 61 2f 6c 61 6e 67 2f 69 6e 76 6f 6b 65 2f 4d 65 74 68 6f 64 48 61 6e 64 6c 65 73
-0x02c0  CP_TAG[46]:                     01 (CONSTANT_Utf8_info)
+0x02c0  CP_TAG[48]:                     01 (CONSTANT_Utf8_info)
         - length:                       00 06
         - bytes:                        4c 6f 6f 6b 75 70
-        CP_TAG[47]:                     00 (????)
