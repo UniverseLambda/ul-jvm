@@ -73,8 +73,6 @@ pub struct ExceptionTableEntry {
 #[derive(Debug, Clone, BinRead)]
 #[br(big)]
 pub struct StackMapTable {
-    pub attribute_name_index: u16,
-    pub attribute_length: u32,
     pub number_of_entries: u16,
     #[br(count = number_of_entries)]
     pub entries: Vec<StackMapFrame>,
@@ -352,8 +350,6 @@ pub struct LocalVariableTypeTableEntry {
 
 #[derive(Debug, Clone, BinRead)]
 pub struct Record {
-    pub attribute_name_index: u16,
-    pub attribute_length: u32,
     pub components_count: u16,
     #[br(count = components_count)]
     pub components: Vec<RecordComponentInfo>,
@@ -394,7 +390,7 @@ pub struct MethodParametersEntry {
     pub access_flags: Vec<MethodParametersEntryAccessFlag>,
 }
 
-#[derive(Debug, Clone, Copy, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumIter)]
 #[repr(u16)]
 pub enum MethodParametersEntryAccessFlag {
     Final = 0x0010,

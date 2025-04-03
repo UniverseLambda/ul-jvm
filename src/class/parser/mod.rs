@@ -55,7 +55,7 @@ pub struct ClassFile {
     pub attributes: Vec<AttributeInfo>,
 }
 
-#[derive(Debug, Clone, Copy, EnumIter, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumIter, Serialize)]
 #[repr(u16)]
 pub enum ClassAccessFlags {
     AccPublic = 0x0001, // 	Declared public; may be accessed from outside its package.
@@ -86,7 +86,7 @@ pub struct FieldInfo {
     pub attributes: Vec<AttributeInfo>,
 }
 
-#[derive(Debug, Clone, Copy, EnumIter, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumIter, Serialize)]
 #[repr(u16)]
 pub enum FieldAccessFlags {
     AccPublic = 0x0001,  // 	Declared public; may be accessed from outside its package.
@@ -117,7 +117,7 @@ pub struct MethodInfo {
     pub attributes: Vec<AttributeInfo>,
 }
 
-#[derive(Debug, Clone, Copy, EnumIter, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumIter, Serialize)]
 #[repr(u16)]
 pub enum MethodAccessFlags {
     AccPublic = 0x0001,  // 	Declared public; may be accessed from outside its package.

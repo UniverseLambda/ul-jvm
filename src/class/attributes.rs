@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use anyhow::Result;
+
 use crate::types::JvmTypeDescriptor;
 
 use super::{
@@ -5,7 +9,9 @@ use super::{
         ConstantClass, ConstantJvmUtf8, ConstantMethodHandle, ConstantMethodref,
         LoadableJvmConstant,
     },
+    get_class,
     jvm_unit::JvmVisibility,
+    parser,
 };
 
 #[derive(Debug, Clone)]
@@ -14,9 +20,10 @@ pub struct Code {
     pub max_locals: u16,
     pub code: Vec<u8>,
     pub exception_table: Vec<ExceptionTableEntry>,
-    pub stack_map_table: Option<StackMapTable>,
+    pub stack_map_table: Vec<StackMapTable>,
     pub line_number_table: Vec<LineNumberTable>,
     pub local_variable_table: Vec<LocalVariableTable>,
+    pub local_variable_type_table: Vec<LocalVariableTypeTable>,
 }
 
 #[derive(Debug, Clone)]
@@ -77,6 +84,33 @@ pub enum VerificationTypeInfo {
     UninitializedThis,
     Object { object: ConstantClass },
     Uninitialized { offset: u16 },
+}
+
+impl VerificationTypeInfo {
+    pub fn try_from_parser(
+        loadable_constant_pool: &HashMap<u16, LoadableJvmConstant>,
+        parser: parser::attributes::VerificationTypeInfo,
+    ) -> Result<Self> {
+        Ok(match parser {
+            parser::attributes::VerificationTypeInfo::Top => VerificationTypeInfo::Top,
+            parser::attributes::VerificationTypeInfo::Integer => VerificationTypeInfo::Integer,
+            parser::attributes::VerificationTypeInfo::Float => VerificationTypeInfo::Float,
+            parser::attributes::VerificationTypeInfo::Long => VerificationTypeInfo::Long,
+            parser::attributes::VerificationTypeInfo::Double => VerificationTypeInfo::Double,
+            parser::attributes::VerificationTypeInfo::Null => VerificationTypeInfo::Null,
+            parser::attributes::VerificationTypeInfo::UninitializedThis => {
+                VerificationTypeInfo::UninitializedThis
+            }
+            parser::attributes::VerificationTypeInfo::Object { cpool_index } => {
+                VerificationTypeInfo::Object {
+                    object: get_class(loadable_constant_pool, &cpool_index)?,
+                }
+            }
+            parser::attributes::VerificationTypeInfo::Uninitialized { offset } => {
+                VerificationTypeInfo::Uninitialized { offset }
+            }
+        })
+    }
 }
 
 #[derive(Debug, Clone)]

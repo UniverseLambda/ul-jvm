@@ -1,16 +1,18 @@
 use std::collections::HashMap;
-use std::intrinsics::unreachable;
+use std::io::Cursor;
 use std::str::FromStr;
 
 use anyhow::{Result, anyhow, bail};
+use binrw::BinRead;
 use either::Either;
+use log::warn;
 
 use super::constant_pool::{
-    self, ConstantClass, ConstantFieldref, ConstantInterfaceMethodref, ConstantJvmUtf8,
+    ConstantClass, ConstantFieldref, ConstantInterfaceMethodref, ConstantJvmUtf8,
     ConstantMethodHandle, ConstantMethodref, DynamicInvoke, LoadableJvmConstant,
 };
-use super::parser::{ClassFile, ConstantPoolInfo, MethodKind};
-use super::{JvmUnitField, JvmUnitMethod};
+use super::parser::{self, ClassAccessFlags, ClassFile, ConstantPoolInfo, MethodKind};
+use super::{JvmUnitField, JvmUnitMethod, get_class, get_name_and_type, get_string};
 
 use crate::types::{JvmMethodDescriptor, JvmTypeDescriptor};
 
@@ -361,67 +363,125 @@ impl JvmUnit {
             }
         }
 
+        let this_class = get_class(&loadable_constant_pool, &class_file.this_class)?;
+        let super_class = get_class(&loadable_constant_pool, &class_file.super_class)?;
+
+        let is_public = class_file
+            .access_flags
+            .contains(&ClassAccessFlags::AccPublic);
+        let is_final = class_file
+            .access_flags
+            .contains(&ClassAccessFlags::AccFinal);
+        let is_super = class_file
+            .access_flags
+            .contains(&ClassAccessFlags::AccSuper);
+        let is_interface = class_file
+            .access_flags
+            .contains(&ClassAccessFlags::AccInterface);
+        let is_abstract = class_file
+            .access_flags
+            .contains(&ClassAccessFlags::AccAbstract);
+        let mut is_synthetic = class_file
+            .access_flags
+            .contains(&ClassAccessFlags::AccSynthetic);
+        let is_annotation = class_file
+            .access_flags
+            .contains(&ClassAccessFlags::AccAnnotation);
+        let is_enum = class_file.access_flags.contains(&ClassAccessFlags::AccEnum);
+        let is_module = class_file
+            .access_flags
+            .contains(&ClassAccessFlags::AccModule);
+
+        let mut unit_type = if is_interface {
+            JvmUnitType::Interface(JvmInterface { is_annotation })
+        } else if is_module {
+            JvmUnitType::Module(JvmModule {})
+        } else {
+            JvmUnitType::Class(JvmClass {
+                is_abstract,
+                is_final,
+                is_super,
+                is_enum,
+            })
+        };
+
+        let mut interfaces = vec![];
+        for interface_index in class_file.interfaces.iter() {
+            interfaces.push(get_class(&loadable_constant_pool, interface_index)?);
+        }
+
+        let mut fields = vec![];
+        for info in class_file.fields.iter() {
+            fields.push(JvmUnitField::from_class_file(
+                info,
+                &jvm_strings,
+                &loadable_constant_pool,
+            )?)
+        }
+
+        let mut methods = vec![];
+        for info in class_file.methods.iter() {
+            methods.push(JvmUnitMethod::from_class_file(
+                info,
+                &jvm_strings,
+                &loadable_constant_pool,
+            )?)
+        }
+
+        let mut is_deprecated = false;
+
+        for attribute in class_file.attributes.iter() {
+            let attribute_name =
+                get_string(&jvm_strings, &attribute.attribute_name_index)?.convert_to_string();
+
+            match attribute_name.as_str() {
+                "Record" => {
+                    let record =
+                        parser::attributes::Record::read_be(&mut Cursor::new(&attribute.info))?;
+
+                    unit_type = JvmUnitType::Record(JvmRecord {
+                        is_abstract,
+                        is_super,
+                        components: record
+                            .components
+                            .into_iter()
+                            .map(|v| {
+                                Ok(JvmRecordComponent {
+                                    name: get_string(&jvm_strings, &v.name_index)?,
+                                    descriptor: JvmTypeDescriptor::from_str(
+                                        &get_string(&jvm_strings, &v.descriptor_index)?
+                                            .convert_to_string(),
+                                    )?,
+                                })
+                            })
+                            .collect::<Result<Vec<_>>>()?,
+                    })
+                }
+                "Deprecated" => {
+                    is_deprecated = true;
+                }
+                "Synthetic" => {
+                    is_synthetic = true;
+                }
+                v => {
+                    warn!("unknown/unsupported attributes in code attribute of a method: {v}");
+                }
+            }
+        }
+
         Ok(Self {
             minor_version,
             major_version,
-            this_class: todo!(),
-            super_class: todo!(),
-            loadable_constant_pool: todo!(),
-            is_public: todo!(),
-            is_synthetic: todo!(),
-            is_deprecated: todo!(),
-            unit_type: todo!(),
-            interfaces: todo!(),
-            fields: todo!(),
-            methods: todo!(),
+            this_class,
+            super_class,
+            loadable_constant_pool,
+            is_public,
+            is_synthetic,
+            is_deprecated,
+            unit_type,
+            interfaces,
+            fields,
+            methods,
         })
     }
-}
-
-fn get_string(
-    jvm_strings: &HashMap<u16, ConstantJvmUtf8>,
-    idx: &u16,
-) -> anyhow::Result<ConstantJvmUtf8> {
-    jvm_strings
-        .get(idx)
-        .cloned()
-        .ok_or_else(|| anyhow!("no strings in constant pool at {idx}"))
-}
-
-fn get_name_and_type(
-    constant_pool: &Vec<ConstantPoolInfo>,
-    idx: &u16,
-) -> anyhow::Result<(u16, u16)> {
-    let res = constant_pool
-        .get(*idx as usize)
-        .ok_or_else(|| anyhow!("no NameAndType in constant pool at {idx}"))?
-        .clone();
-
-    let ConstantPoolInfo::NameAndType {
-        name_index,
-        descriptor_index,
-    } = res
-    else {
-        bail!(
-            "tried to access NameAndType at {idx} in constant pool, but something else was found"
-        );
-    };
-
-    Ok((name_index, descriptor_index))
-}
-
-fn get_class(
-    loadable_constant_pool: &HashMap<u16, LoadableJvmConstant>,
-    idx: &u16,
-) -> anyhow::Result<ConstantClass> {
-    let res = loadable_constant_pool
-        .get(idx)
-        .ok_or_else(|| anyhow!("no Class in constant pool at {idx}"))?
-        .clone();
-
-    let LoadableJvmConstant::Class(c) = res else {
-        bail!("tried to access Class at {idx} in constant pool, but something else was found");
-    };
-
-    Ok(c)
 }
