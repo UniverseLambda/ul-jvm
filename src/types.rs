@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use anyhow::{Context, anyhow, bail};
+use log::{debug, trace};
 
 pub type JvmByte = i8;
 pub type JvmShort = i16;
@@ -40,6 +41,8 @@ impl FromStr for JvmTypeDescriptor {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        debug!("JvmTypeDescriptor::from_str: {s}");
+
         if s.is_empty() {
             bail!("empty type descriptor");
         }
@@ -87,6 +90,7 @@ impl FromStr for JvmMethodDescriptor {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        debug!("JvmMethodDescriptor::from_str: {s}");
         match s {
             v if v.is_empty() => bail!("empty method descriptor"),
             v if !v.starts_with('(') => bail!("method descriptor does not starts with '('"),
@@ -101,12 +105,22 @@ impl FromStr for JvmMethodDescriptor {
         let mut parameter_types = vec![];
 
         while !chunky_boi.is_empty() {
+            trace!("chunky_boi: {chunky_boi}");
+
             let (to_parse, next) = if chunky_boi.starts_with("[") {
                 let array_desc_end = chunky_boi
                     .find(|c| c != '[')
                     .ok_or_else(|| anyhow!("un-ended array descriptor"))?;
 
-                chunky_boi.split_at(array_desc_end + 1)
+                if chunky_boi.chars().nth(array_desc_end).unwrap() == 'L' {
+                    let class_desc = chunky_boi
+                        .find(';')
+                        .ok_or_else(|| anyhow!("un-ended class descriptor"))?;
+
+                    chunky_boi.split_at(class_desc + 1)
+                } else {
+                    chunky_boi.split_at(array_desc_end + 1)
+                }
             } else if chunky_boi.starts_with("L") {
                 let class_desc = chunky_boi
                     .find(';')
@@ -125,7 +139,8 @@ impl FromStr for JvmMethodDescriptor {
             );
         }
 
-        let return_type = if &ret_desc[1..] == "V" {
+        let ret_desc = &ret_desc[1..];
+        let return_type = if ret_desc == "V" {
             None
         } else {
             Some(
@@ -138,5 +153,17 @@ impl FromStr for JvmMethodDescriptor {
             parameter_types,
             return_type,
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::str::FromStr;
+
+    use super::JvmMethodDescriptor;
+
+    fn method_desc_test() {
+        JvmMethodDescriptor::from_str("(IDLjava/lang/Thread;)Ljava/lang/Object;")
+            .expect("not working");
     }
 }

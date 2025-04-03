@@ -100,12 +100,20 @@ pub struct AttributeInfo {
 pub enum MethodKind {
     #[br(magic = 1u8)]
     GetField,
+    #[br(magic = 2u8)]
     GetStatic,
+    #[br(magic = 3u8)]
     PutField,
+    #[br(magic = 4u8)]
     PutStatic,
+    #[br(magic = 5u8)]
     InvokeVirtual,
+    #[br(magic = 6u8)]
     InvokeStatic,
+    #[br(magic = 7u8)]
     InvokeSpecial,
+    #[br(magic = 8u8)]
     NewInvokeSpecial,
+    #[br(magic = 9u8)]
     InvokeInterface,
 }

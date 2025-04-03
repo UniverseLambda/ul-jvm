@@ -5,7 +5,7 @@ use std::str::FromStr;
 use anyhow::{Result, anyhow, bail};
 use binrw::BinRead;
 use either::Either;
-use log::warn;
+use log::{debug, trace, warn};
 
 use super::constant_pool::{
     ConstantClass, ConstantFieldref, ConstantInterfaceMethodref, ConstantJvmUtf8,
@@ -89,6 +89,8 @@ impl JvmUnit {
         let mut interface_method_refs: HashMap<u16, ConstantInterfaceMethodref> = HashMap::new(); // OK
         let mut loadable_constant_pool: HashMap<u16, LoadableJvmConstant> = HashMap::new(); // OK
 
+        debug!("CONSTANT POOL - PASS 0");
+
         for (idx, constant) in class_file
             .constant_pool
             .iter()
@@ -130,6 +132,10 @@ impl JvmUnit {
                 _ => (),
             }
         }
+
+        trace!("- jvm_strings: {jvm_strings:#?}");
+        trace!("- loadable_constant_pool: {loadable_constant_pool:#?}");
+        debug!("CONSTANT POOL - PASS 1");
 
         for (idx, constant) in class_file
             .constant_pool
@@ -199,6 +205,10 @@ impl JvmUnit {
                 _ => (),
             }
         }
+
+        trace!("- loadable_constant_pool: {loadable_constant_pool:#?}");
+        trace!("- dynamic_invokes: {dynamic_invokes:#?}");
+        debug!("CONSTANT POOL - PASS 2");
 
         for (idx, constant) in class_file
             .constant_pool
@@ -277,6 +287,12 @@ impl JvmUnit {
             }
         }
 
+        trace!("- field_refs: {field_refs:#?}");
+        trace!("- method_refs: {method_refs:#?}");
+        trace!("- interface_method_refs: {interface_method_refs:#?}");
+
+        debug!("CONSTANT POOL - PASS 3");
+
         for (idx, constant) in class_file
             .constant_pool
             .iter()
@@ -296,7 +312,7 @@ impl JvmUnit {
                         let field_ref = field_refs
                             .get(reference_index)
                             .ok_or_else(|| {
-                                anyhow!("no FieldRef found at {reference_index} in constant pool")
+                                anyhow!("no FieldRef found at {reference_index} in constant pool (for {v:#?})")
                             })?
                             .clone();
 
@@ -362,6 +378,9 @@ impl JvmUnit {
                 loadable_constant_pool.insert(idx, LoadableJvmConstant::MethodHandle(res));
             }
         }
+
+        trace!("- loadable_constant_pool: {loadable_constant_pool:#?}");
+        debug!("== END OF CONSTANT POOL TABLE ==");
 
         let this_class = get_class(&loadable_constant_pool, &class_file.this_class)?;
         let super_class = get_class(&loadable_constant_pool, &class_file.super_class)?;
