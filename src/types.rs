@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use anyhow::{Context, anyhow, bail};
 use log::{debug, trace};
+use serde::Serialize;
 
 pub type JvmByte = i8;
 pub type JvmShort = i16;
@@ -23,7 +24,7 @@ pub struct JvmRefClass(Option<JvmAddress>);
 pub struct JvmRefInterface(Option<JvmAddress>);
 pub struct JvmRefArray(Option<JvmAddress>);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum JvmTypeDescriptor {
     Byte,
     Char,
@@ -80,7 +81,7 @@ impl FromStr for JvmTypeDescriptor {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JvmMethodDescriptor {
     pub parameter_types: Vec<JvmTypeDescriptor>,
     pub return_type: Option<JvmTypeDescriptor>,

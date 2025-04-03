@@ -3,6 +3,7 @@ use std::{collections::HashMap, io::Cursor, str::FromStr};
 use anyhow::{Result, anyhow, bail};
 use binrw::BinRead;
 use log::warn;
+use serde::Serialize;
 
 use crate::types::{JvmMethodDescriptor, JvmTypeDescriptor};
 
@@ -18,7 +19,7 @@ use super::{
     parser::{self, MethodAccessFlags, MethodInfo, attributes::MethodParametersEntryAccessFlag},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JvmUnitMethod {
     pub name: ConstantJvmUtf8,
     pub descriptor: JvmMethodDescriptor,

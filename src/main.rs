@@ -27,5 +27,10 @@ fn main() {
     debug!("Putting everything nice and cosy");
     let jvm_unit = JvmUnit::from_class_file(parsed_class).unwrap();
 
-    trace!("jvm_unit: {jvm_unit:#?}");
+    info!("Dumping processed JVM unit...");
+    std::fs::write(
+        "jvm_unit_dump.json",
+        serde_json::to_string_pretty(&jvm_unit).unwrap(),
+    )
+    .unwrap();
 }

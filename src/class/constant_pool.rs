@@ -1,4 +1,5 @@
 use either::Either;
+use serde::Serialize;
 
 use crate::types::{JvmDouble, JvmFloat, JvmInt, JvmLong, JvmMethodDescriptor, JvmTypeDescriptor};
 
@@ -11,40 +12,40 @@ pub type ConstantFloat = JvmFloat;
 pub type ConstantLong = JvmLong;
 pub type ConstantDouble = JvmDouble;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ConstantClass {
     pub name: ConstantJvmUtf8,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ConstantFieldref {
     pub class: ConstantClass,
     pub name: ConstantJvmUtf8,
     pub ty: JvmTypeDescriptor,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ConstantMethodref {
     pub class: ConstantClass,
     pub name: ConstantJvmUtf8,
     pub ty: JvmMethodDescriptor,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ConstantInterfaceMethodref {
     pub class: ConstantClass,
     pub name: ConstantJvmUtf8,
     pub ty: JvmMethodDescriptor,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DynamicInvoke {
     pub bootstrap_method_attr_index: u16, // TODO: bootstrap methods
     pub name: ConstantJvmUtf8,
     pub ty: JvmMethodDescriptor,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ConstantMethodHandle {
     GetField(ConstantFieldref),
     GetStatic(ConstantFieldref),
@@ -57,7 +58,7 @@ pub enum ConstantMethodHandle {
     InvokeInterface(ConstantInterfaceMethodref),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum LoadableJvmConstant {
     Class(ConstantClass),
     // THOSE ARE NOT LOADABLE

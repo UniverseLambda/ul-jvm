@@ -6,6 +6,7 @@ use anyhow::{Result, anyhow, bail};
 use binrw::BinRead;
 use either::Either;
 use log::{debug, trace, warn};
+use serde::Serialize;
 
 use super::constant_pool::{
     ConstantClass, ConstantFieldref, ConstantInterfaceMethodref, ConstantJvmUtf8,
@@ -16,7 +17,7 @@ use super::{JvmUnitField, JvmUnitMethod, get_class, get_name_and_type, get_strin
 
 use crate::types::{JvmMethodDescriptor, JvmTypeDescriptor};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JvmUnit {
     pub minor_version: u16,
     pub major_version: u16,
@@ -32,7 +33,7 @@ pub struct JvmUnit {
     pub methods: Vec<JvmUnitMethod>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum JvmUnitType {
     Class(JvmClass),
     Module(JvmModule),
@@ -40,7 +41,7 @@ pub enum JvmUnitType {
     Record(JvmRecord),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JvmClass {
     pub is_abstract: bool,
     pub is_final: bool,
@@ -48,15 +49,15 @@ pub struct JvmClass {
     pub is_enum: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JvmModule {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JvmInterface {
     pub is_annotation: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JvmRecord {
     pub is_abstract: bool,
     // pub is_final: bool, /* ALWAYS TRUE */
@@ -64,13 +65,13 @@ pub struct JvmRecord {
     pub components: Vec<JvmRecordComponent>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JvmRecordComponent {
     pub name: ConstantJvmUtf8,
     pub descriptor: JvmTypeDescriptor,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum JvmVisibility {
     Public,
     Private,

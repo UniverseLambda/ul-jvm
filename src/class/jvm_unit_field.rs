@@ -3,6 +3,7 @@ use std::{collections::HashMap, io::Cursor, str::FromStr};
 use anyhow::{Result, anyhow, bail};
 use binrw::BinRead;
 use log::warn;
+use serde::Serialize;
 
 use crate::types::JvmTypeDescriptor;
 
@@ -14,7 +15,7 @@ use super::{
     parser::{self, FieldAccessFlags, FieldInfo},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JvmUnitField {
     pub name: ConstantJvmUtf8,
     pub vis: JvmVisibility,

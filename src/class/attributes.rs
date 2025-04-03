@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
+use serde::Serialize;
 
 use crate::types::JvmTypeDescriptor;
 
@@ -14,7 +15,7 @@ use super::{
     parser,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Code {
     pub max_stack: u16,
     pub max_locals: u16,
@@ -26,7 +27,7 @@ pub struct Code {
     pub local_variable_type_table: Vec<LocalVariableTypeTable>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExceptionTableEntry {
     pub start_pc: u16,
     pub end_pc: u16,
@@ -34,12 +35,12 @@ pub struct ExceptionTableEntry {
     pub catch_type: ConstantClass,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct StackMapTable {
     pub entries: Vec<StackMapFrame>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum StackMapFrame {
     Same {
         id: u8,
@@ -73,7 +74,7 @@ pub enum StackMapFrame {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum VerificationTypeInfo {
     Top,
     Integer,
@@ -113,45 +114,45 @@ impl VerificationTypeInfo {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct BootstrapMethods {
     pub bootstrap_methods: Vec<BootstrapMethodsEntry>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct BootstrapMethodsEntry {
     pub bootstrap_method_ref: ConstantMethodHandle,
     pub bootstrap_arguments: Vec<LoadableJvmConstant>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct NestHost {
     pub host_class_index: ConstantClass,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct NestMembers {
     pub classes: Vec<ConstantClass>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PermittedSubclasses {
     pub classes: Vec<ConstantClass>,
 }
 // JAVA CRITICAL
 
 // Directly declared inside JvmUnitMethod
-// #[derive(Debug, Clone)]
+// #[derive(Debug, Clone, Serialize)]
 // pub struct Exceptions {
 //     pub exception_index_table: Vec<ConstantClass>,
 // }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct InnerClasses {
     pub classes: Vec<InnerClassesEntry>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct InnerClassesEntry {
     pub inner_class_info_index: ConstantClass,
     pub outer_class_info_index: Option<ConstantClass>,
@@ -166,42 +167,42 @@ pub struct InnerClassesEntry {
     pub is_enum: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct EnclosingMethod {
     pub class: ConstantClass,
     pub method: Option<ConstantMethodref>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Synthetic;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Signature {
     pub signature: ConstantJvmUtf8,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SourceFile {
     pub sourcefile: ConstantJvmUtf8,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LineNumberTable {
     pub line_number_table: Vec<LineNumberTableEntry>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LineNumberTableEntry {
     pub start_pc: u16,
     pub line_number: u16,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LocalVariableTable {
     pub local_variable_table: Vec<LocalVariableTableEntry>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LocalVariableTableEntry {
     pub start_pc: u16,
     pub length: u16,
@@ -210,12 +211,12 @@ pub struct LocalVariableTableEntry {
     pub index: u16,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LocalVariableTypeTable {
     pub local_variable_type_table: Vec<LocalVariableTypeTableEntry>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LocalVariableTypeTableEntry {
     pub start_pc: u16,
     pub length: u16,
@@ -224,12 +225,12 @@ pub struct LocalVariableTypeTableEntry {
     pub index: u16,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Record {
     pub components: Vec<RecordComponentInfo>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RecordComponentInfo {
     pub name: ConstantJvmUtf8,
     pub descriptor: JvmTypeDescriptor,
@@ -237,15 +238,15 @@ pub struct RecordComponentInfo {
 
 // USEFUL
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SourceDebugExtension {
     pub debug_extension: Vec<u8>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Deprecated {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MethodParameter {
     pub name: ConstantJvmUtf8,
     pub is_final: bool,
