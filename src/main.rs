@@ -1,6 +1,6 @@
 use binrw::BinRead;
-use class::parser::ClassFile;
-use log::{debug, info};
+use class::{JvmUnit, parser::ClassFile};
+use log::{debug, info, trace};
 
 mod class;
 mod types;
@@ -17,10 +17,15 @@ fn main() {
 
     let parsed_class = ClassFile::read(&mut content).expect("UNABLE TO PARSE FILE");
 
-    debug!("Dumping parsed class file...");
+    info!("Dumping parsed class file...");
     std::fs::write(
         "class_dump.json",
         serde_json::to_string_pretty(&parsed_class).unwrap(),
     )
     .unwrap();
+
+    debug!("Putting everything nice and cosy");
+    let jvm_unit = JvmUnit::from_class_file(parsed_class).unwrap();
+
+    trace!("jvm_unit: {jvm_unit:#?}");
 }

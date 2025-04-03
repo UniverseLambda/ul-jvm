@@ -29,7 +29,7 @@ Exposed by Java, might be useful for libraries:
 - RuntimeVisibleTypeAnnotations
 - RuntimeInvisibleTypeAnnotations
 - AnnotationDefault
-- MethodParameters
+- MethodParameters: WRITTEN
 - Module
 - ModulePackages
 - ModuleMainClass
@@ -52,7 +52,7 @@ pub struct Code {
     pub max_locals: u16,
     pub code_length: u32,
     #[br(count = code_length)]
-    pub code: Vec<u64>,
+    pub code: Vec<u8>,
     pub exception_table_length: u16,
     #[br(count = exception_table_length)]
     pub exception_table: Vec<ExceptionTableEntry>,
@@ -379,3 +379,31 @@ pub struct SourceDebugExtension {
 
 #[derive(Debug, Clone, BinRead)]
 pub struct Deprecated {}
+
+#[derive(Debug, Clone, BinRead)]
+pub struct MethodParameters {
+    pub parameters_count: u8,
+    #[br(count = parameters_count)]
+    pub parameters: Vec<MethodParametersEntry>,
+}
+
+#[derive(Debug, Clone, BinRead)]
+pub struct MethodParametersEntry {
+    pub name_index: u16,
+    #[br(map = |bits: u16| MethodParametersEntryAccessFlag::from_bits(bits))]
+    pub access_flags: Vec<MethodParametersEntryAccessFlag>,
+}
+
+#[derive(Debug, Clone, Copy, EnumIter)]
+#[repr(u16)]
+pub enum MethodParametersEntryAccessFlag {
+    Final = 0x0010,
+    Synthetic = 0x1000,
+    Mandated = 0x8000,
+}
+
+impl MethodParametersEntryAccessFlag {
+    pub fn from_bits(bits: u16) -> Vec<Self> {
+        Self::iter().filter(|v| (bits & (*v as u16)) != 0).collect()
+    }
+}

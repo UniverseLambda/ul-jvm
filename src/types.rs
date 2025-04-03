@@ -22,7 +22,7 @@ pub struct JvmRefClass(Option<JvmAddress>);
 pub struct JvmRefInterface(Option<JvmAddress>);
 pub struct JvmRefArray(Option<JvmAddress>);
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum JvmTypeDescriptor {
     Byte,
     Char,
@@ -77,6 +77,7 @@ impl FromStr for JvmTypeDescriptor {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct JvmMethodDescriptor {
     pub parameter_types: Vec<JvmTypeDescriptor>,
     pub return_type: Option<JvmTypeDescriptor>,

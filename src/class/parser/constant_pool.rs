@@ -47,9 +47,9 @@ pub enum ConstantPoolInfo {
     #[br(magic = 8u8)]
     String { string_index: u16 },
     #[br(magic = 3u8)]
-    Integer { bytes: u32 },
+    Integer { bytes: i32 },
     #[br(magic = 4u8)]
-    Float { bytes: u32 },
+    Float { bytes: f32 },
     #[br(magic = 5u8)]
     Long { high_bytes: u32, low_bytes: u32 },
     #[br(magic = 6u8)]
