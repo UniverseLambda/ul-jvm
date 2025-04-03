@@ -125,9 +125,9 @@ impl JvmUnit {
                 } => {
                     loadable_constant_pool.insert(
                         idx,
-                        LoadableJvmConstant::Double(
-                            (((*high_bytes as u64) << 32) | (*low_bytes as u64)) as f64,
-                        ),
+                        LoadableJvmConstant::Double(f64::from_bits(
+                            ((*high_bytes as u64) << 32) | (*low_bytes as u64),
+                        )),
                     );
                 }
                 _ => (),
