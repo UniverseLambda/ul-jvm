@@ -10,7 +10,7 @@ pub type JvmLong = i64;
 pub type JvmFloat = f32;
 pub type JvmDouble = f64;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Hash)]
 pub enum JvmTypeDescriptor {
     Byte,
     Char,
@@ -67,7 +67,7 @@ impl FromStr for JvmTypeDescriptor {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Hash)]
 pub struct JvmMethodDescriptor {
     pub parameter_types: Vec<JvmTypeDescriptor>,
     pub return_type: Option<JvmTypeDescriptor>,

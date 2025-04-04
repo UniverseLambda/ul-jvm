@@ -22,7 +22,7 @@ pub struct JvmUnit {
     pub minor_version: u16,
     pub major_version: u16,
     pub this_class: ConstantClass,
-    pub super_class: ConstantClass,
+    pub super_class: Option<ConstantClass>,
     pub loadable_constant_pool: HashMap<u16, LoadableJvmConstant>,
     pub is_public: bool,
     pub is_synthetic: bool,
@@ -381,7 +381,11 @@ impl JvmUnit {
         debug!("== END OF CONSTANT POOL TABLE ==");
 
         let this_class = get_class(&loadable_constant_pool, &class_file.this_class)?;
-        let super_class = get_class(&loadable_constant_pool, &class_file.super_class)?;
+        let super_class = if class_file.super_class == 0 {
+            None
+        } else {
+            Some(get_class(&loadable_constant_pool, &class_file.super_class)?)
+        };
 
         let is_public = class_file
             .access_flags

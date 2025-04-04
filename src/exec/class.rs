@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ops::Deref, sync::Arc};
 
-use super::{method::Method, runtime_type::RuntimeType};
+use super::{interface::Interface, method::Method, runtime_type::RuntimeType};
 
 #[derive(Debug, Clone)]
 pub struct ClassInstance {
@@ -44,6 +44,7 @@ impl Class {
 
     pub fn new(
         super_class: Option<Class>,
+        interfaces: Vec<Interface>,
         name: String,
         static_fields: Box<[ClassField]>,
         fields: Box<[ClassField]>,
@@ -52,6 +53,7 @@ impl Class {
     ) -> Self {
         Self(Arc::new(InnerClass {
             super_class,
+            interfaces,
             name,
             static_fields,
             fields,
@@ -78,6 +80,7 @@ impl Deref for Class {
 #[derive(Debug, Clone)]
 pub struct InnerClass {
     pub super_class: Option<Class>,
+    pub interfaces: Vec<Interface>,
     pub name: String,
     pub static_fields: Box<[ClassField]>,
     pub fields: Box<[ClassField]>,
