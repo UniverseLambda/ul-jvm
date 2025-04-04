@@ -1,8 +1,9 @@
 use binrw::BinRead;
 use class::{JvmUnit, parser::ClassFile};
-use log::{debug, info, trace};
+use log::{debug, info};
 
 mod class;
+mod exec;
 mod types;
 
 fn main() {

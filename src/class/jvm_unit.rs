@@ -240,29 +240,11 @@ impl JvmUnit {
                         },
                     );
                 }
-                ConstantPoolInfo::Methodref {
+                v @ ConstantPoolInfo::Methodref {
                     class_index,
                     name_and_type_index,
-                } => {
-                    let class = get_class(&loadable_constant_pool, class_index)?;
-                    let (name_idx, descriptor_idx) =
-                        get_name_and_type(&class_file.constant_pool, name_and_type_index)?;
-
-                    let name = get_string(&jvm_strings, &name_idx)?;
-                    let descriptor = JvmMethodDescriptor::from_str(
-                        &get_string(&jvm_strings, &descriptor_idx)?.convert_to_string(),
-                    )?;
-
-                    method_refs.insert(
-                        idx,
-                        ConstantMethodref {
-                            class,
-                            name,
-                            ty: descriptor,
-                        },
-                    );
                 }
-                ConstantPoolInfo::InterfaceMethodref {
+                | v @ ConstantPoolInfo::InterfaceMethodref {
                     class_index,
                     name_and_type_index,
                 } => {
@@ -275,14 +257,29 @@ impl JvmUnit {
                         &get_string(&jvm_strings, &descriptor_idx)?.convert_to_string(),
                     )?;
 
-                    interface_method_refs.insert(
-                        idx,
-                        ConstantInterfaceMethodref {
-                            class,
-                            name,
-                            ty: descriptor,
-                        },
-                    );
+                    match v {
+                        ConstantPoolInfo::Methodref { .. } => {
+                            method_refs.insert(
+                                idx,
+                                ConstantMethodref {
+                                    class,
+                                    name,
+                                    ty: descriptor,
+                                },
+                            );
+                        }
+                        ConstantPoolInfo::InterfaceMethodref { .. } => {
+                            interface_method_refs.insert(
+                                idx,
+                                ConstantInterfaceMethodref {
+                                    class,
+                                    name,
+                                    ty: descriptor,
+                                },
+                            );
+                        }
+                        _ => unreachable!(),
+                    }
                 }
                 _ => (),
             }
