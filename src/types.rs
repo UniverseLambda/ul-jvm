@@ -28,8 +28,6 @@ impl FromStr for JvmTypeDescriptor {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        debug!("JvmTypeDescriptor::from_str: {s}");
-
         if s.is_empty() {
             bail!("empty type descriptor");
         }
@@ -77,7 +75,6 @@ impl FromStr for JvmMethodDescriptor {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        debug!("JvmMethodDescriptor::from_str: {s}");
         match s {
             v if v.is_empty() => bail!("empty method descriptor"),
             v if !v.starts_with('(') => bail!("method descriptor does not starts with '('"),
@@ -92,8 +89,6 @@ impl FromStr for JvmMethodDescriptor {
         let mut parameter_types = vec![];
 
         while !chunky_boi.is_empty() {
-            trace!("chunky_boi: {chunky_boi}");
-
             let (to_parse, next) = if chunky_boi.starts_with("[") {
                 let array_desc_end = chunky_boi
                     .find(|c| c != '[')

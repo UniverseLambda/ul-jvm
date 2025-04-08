@@ -1,18 +1,14 @@
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
+use anyhow::bail;
 use class::{Class, ClassField};
 use either::Either;
 use heap::JvmHeap;
 use interface::Interface;
-use method::{AbstractMethod, Method};
+use method::Method;
 use thread::JvmThread;
 
-use crate::class::{
-    JvmClass, JvmUnit, JvmUnitField, JvmUnitType, constant_pool::LoadableJvmConstant,
-};
+use crate::class::{JvmClass, JvmUnit, JvmUnitField, JvmUnitType};
 
 pub mod array;
 pub mod class;
@@ -24,41 +20,39 @@ pub mod thread;
 
 pub struct JvmExecEnv {
     pub classes: HashMap<String, Class>,
+    pub interfaces: HashMap<String, Interface>,
     pub heap: JvmHeap,
     pub threads: Vec<JvmThread>,
-    pub start_class: Class,
-    pub loadable_constant_pool: HashMap<u16, LoadableJvmConstant>,
+    pub start_class: Option<Class>,
+    pub code: Vec<u8>,
+
+    pub partial_classes: Vec<PartialClass>,
 }
 
 impl JvmExecEnv {
-    pub fn builder() -> JvmExecEnvBuilder {
-        JvmExecEnvBuilder {
+    pub fn new() -> Self {
+        Self {
             classes: HashMap::new(),
+            interfaces: HashMap::new(),
+            heap: JvmHeap {},
+            threads: Vec::new(),
             start_class: None,
-            code: vec![],
-            interfaces: vec![],
-            partial_classes: VecDeque::new(),
+            code: Vec::new(),
+            partial_classes: Vec::new(),
         }
     }
-}
 
-pub struct JvmExecEnvBuilder {
-    pub classes: HashMap<String, Class>,
-    pub interfaces: Vec<Interface>,
-    pub start_class: Option<String>,
-    pub code: Vec<u8>,
-
-    pub partial_classes: VecDeque<PartialClass>,
-}
-
-impl JvmExecEnvBuilder {
-    pub fn set_start_class(&mut self, name: String) -> &mut Self {
-        self.start_class = Some(name);
-
-        self
+    pub fn missing_units(&self) -> Vec<String> {
+        self.partial_classes
+            .iter()
+            .map(|c| c.missing_unit_names())
+            .fold(Vec::new(), |mut v, next| {
+                v.extend(next);
+                v
+            })
     }
 
-    pub fn add_unit(&mut self, jvm_unit: JvmUnit) -> &mut Self {
+    pub fn add_unit(&mut self, jvm_unit: JvmUnit) -> bool {
         let parse_field = |f: &JvmUnitField| ClassField {
             name: Arc::new(f.name.convert_to_string()),
             value: f.constant_value.clone().into(),
@@ -122,7 +116,7 @@ impl JvmExecEnvBuilder {
 
         match jvm_unit.unit_type {
             JvmUnitType::Class(JvmClass { is_abstract, .. }) => {
-                self.partial_classes.push_back(PartialClass {
+                self.partial_classes.push(PartialClass {
                     super_class: jvm_unit
                         .super_class
                         .map(|s| Either::Left(s.name.convert_to_string())),
@@ -138,18 +132,104 @@ impl JvmExecEnvBuilder {
                     is_abstract,
                 });
             }
-            JvmUnitType::Interface(_) => todo!(),
+            JvmUnitType::Interface(_) => {
+                let name = jvm_unit.this_class.name.convert_to_string();
+
+                self.interfaces
+                    .insert(name.clone(), Interface::new(name, static_fields));
+            }
             JvmUnitType::Record(_) => todo!(),
             JvmUnitType::Module(_) => (), // TODO: Modules
         }
 
-        self
+        self.try_complete()
     }
 
-    pub fn build(&mut self) -> anyhow::Result<JvmExecEnv> {
-        todo!()
+    fn try_complete(&mut self) -> bool {
+        loop {
+            if self.partial_classes.is_empty() {
+                break;
+            }
+
+            let last_partial_count = self.partial_classes.len();
+            let mut still_incomplete = vec![];
+
+            for (idx, content) in self.partial_classes.drain(..).enumerate() {
+                match content.try_complete(&self.classes, &self.interfaces) {
+                    Either::Left(incomplete) => still_incomplete.push(incomplete),
+                    Either::Right(complete) => {
+                        self.classes.insert(complete.name.clone(), complete.clone());
+
+                        if idx == 0 && self.start_class.is_none() {
+                            self.start_class = Some(complete);
+                        }
+                    }
+                }
+            }
+
+            self.partial_classes = still_incomplete;
+
+            if self.partial_classes.len() == last_partial_count {
+                break;
+            }
+        }
+
+        self.partial_classes.is_empty()
     }
 }
+
+// pub struct JvmExecEnvBuilder {
+//     pub classes: HashMap<String, Class>,
+//     pub interfaces: HashMap<String, Interface>,
+//     pub start_class: Option<String>,
+//     pub code: Vec<u8>,
+
+//     pub partial_classes: Vec<PartialClass>,
+// }
+
+// impl JvmExecEnvBuilder {
+// pub fn next_missing_class(&mut self) -> anyhow::Result<JvmExecEnv>
+
+// pub fn build(&mut self) -> anyhow::Result<JvmExecEnv> {
+//     let mut to_treat: Vec<PartialClass> = self.partial_classes.drain(..).collect();
+
+//     loop {
+//         if to_treat.is_empty() {
+//             break;
+//         }
+
+//         let last_partial_count = to_treat.len();
+//         let mut still_incomplete = vec![];
+
+//         for content in to_treat {
+//             match content.try_complete(&self.classes, &self.interfaces) {
+//                 Either::Left(incomplete) => still_incomplete.push(incomplete),
+//                 Either::Right(complete) => {
+//                     self.classes.insert(complete.name.clone(), complete);
+//                 }
+//             }
+//         }
+
+//         if still_incomplete.len() == last_partial_count {
+//             let missing_names = still_incomplete
+//                 .into_iter()
+//                 .map(|c| c.name)
+//                 .collect::<Vec<_>>();
+
+//             bail!("Unable to resolve some classes: {missing_names:?}",);
+//         }
+
+//         to_treat = still_incomplete;
+//     }
+
+//     Ok(JvmExecEnv {
+//         classes: self.classes.drain().collect(),
+//         heap: JvmHeap::new(),
+//         threads: vec![],
+//         start_class: todo!(),
+//     })
+// }
+// }
 
 struct PartialClass {
     super_class: Option<Either<String, Class>>,
@@ -162,6 +242,22 @@ struct PartialClass {
 }
 
 impl PartialClass {
+    pub fn missing_unit_names(&self) -> Vec<String> {
+        let mut missings = vec![];
+
+        if let Some(Either::Left(name)) = self.super_class.as_ref() {
+            missings.push(name.to_string());
+        }
+
+        for partial_interface in self.interfaces.iter() {
+            if let Either::Left(name) = partial_interface {
+                missings.push(name.to_string());
+            }
+        }
+
+        missings
+    }
+
     pub fn try_complete(
         mut self,
         classes: &HashMap<String, Class>,

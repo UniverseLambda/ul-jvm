@@ -10,3 +10,9 @@ pub enum AllocatableType {
 
 #[derive(Debug)]
 pub struct JvmHeap {}
+
+impl JvmHeap {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
