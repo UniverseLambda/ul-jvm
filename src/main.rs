@@ -2,12 +2,16 @@ use std::path::Path;
 
 use anyhow::{Context, bail};
 use binrw::BinRead;
+use cached::proc_macro::cached;
 use class::{JvmUnit, parser::ClassFile};
+use either::Either;
 use exec::JvmExecEnv;
-use log::{debug, info};
+use jar::JarFile;
+use log::{debug, info, warn};
 
 mod class;
 mod exec;
+mod jar;
 mod types;
 
 fn main() {
@@ -22,8 +26,14 @@ fn main() {
 
     while !done {
         for class in jvm_exec_env.missing_units() {
-            let jvm_unit = load_unit(&class, &[".".to_string()])
-                .expect(&format!("unable to load class file {class}"));
+            let jvm_unit = load_unit(
+                &class,
+                &[
+                    ".".to_string(),
+                    "/usr/lib/jvm/jre/lib/jrt-fs.jar".to_string(),
+                ],
+            )
+            .expect(&format!("unable to load class file {class}"));
 
             done = jvm_exec_env.add_unit(jvm_unit);
         }
@@ -32,31 +42,52 @@ fn main() {
 
 pub fn load_unit(full_name: &str, class_path: &[String]) -> anyhow::Result<JvmUnit> {
     debug!("Looking up class file for {full_name} in {class_path:?}...");
-    let mut full_path = None;
+    let mut source = None;
 
     for current_dir in class_path {
-        let current_path = Path::new(current_dir)
-            .join(full_name)
-            .with_extension("class");
+        if current_dir.ends_with(".jar") || current_dir.ends_with(".JAR") {
+            let mut jar_file = match read_jar(current_dir) {
+                Ok(v) => v,
+                Err(e) => {
+                    warn!("unable to read JAR file {current_dir}: {e}. Skipping...");
+                    continue;
+                }
+            };
+
+            if jar_file.has_unit(full_name) {
+                source = Some(Either::Right(jar_file.read_class_file(full_name)?));
+                break;
+            }
+        }
+
+        let current_dir = Path::new(current_dir);
+
+        // TODO: Handle when this is a dir
+        if current_dir.is_dir() {}
+
+        let current_path = current_dir.join(full_name).with_extension("class");
 
         if current_path.is_file() {
-            full_path = Some(current_path);
+            source = Some(Either::Left(
+                std::fs::OpenOptions::new()
+                    .read(true)
+                    .open(current_path)
+                    .context("opening class file")?,
+            ));
             break;
         }
     }
 
-    let Some(full_path) = full_path else {
-        bail!("no file found in class path for {full_name}");
+    let Some(source) = source else {
+        bail!("no JVM unit in class path for {full_name}");
     };
 
-    debug!("Found class file for {full_name} at {full_path:?}");
+    debug!("Found class file for {full_name} at {source:?}");
 
-    let mut content = std::fs::OpenOptions::new()
-        .read(true)
-        .open(full_path)
-        .context("opening class file")?;
-
-    let parsed_class = ClassFile::read(&mut content).expect("UNABLE TO PARSE FILE");
+    let parsed_class = match source {
+        Either::Left(mut v) => ClassFile::read(&mut v)?,
+        Either::Right(mut v) => ClassFile::read(&mut v)?,
+    };
 
     info!("Dumping parsed class file...");
     std::fs::write(
@@ -77,4 +108,9 @@ pub fn load_unit(full_name: &str, class_path: &[String]) -> anyhow::Result<JvmUn
     .context("write unit dump JSON")?;
 
     Ok(jvm_unit)
+}
+
+#[cached(result = true, key = "String", convert = r##"{ path.to_string() }"##)]
+fn read_jar(path: &str) -> anyhow::Result<JarFile> {
+    JarFile::new(Path::new(path))
 }
