@@ -23,7 +23,7 @@ use super::{
 pub struct JvmUnitMethod {
     pub name: ConstantJvmUtf8,
     pub descriptor: JvmMethodDescriptor,
-    pub code: Code,
+    pub code: Option<Code>,
     pub exceptions: Vec<ConstantClass>,
     pub parameters: Option<Vec<MethodParameter>>,
     pub signature: Option<Signature>,
@@ -82,7 +82,7 @@ impl JvmUnitMethod {
 
         let mut signature = None;
         let mut is_deprecated = false;
-        let mut code_opt = None;
+        let mut code = None;
         let mut exceptions_opt = None;
         let mut parameters_opt = None;
 
@@ -102,7 +102,7 @@ impl JvmUnitMethod {
                     })
                 }
                 "Code" => {
-                    let code =
+                    let code_attr =
                         parser::attributes::Code::read_be(&mut Cursor::new(&attribute.info))?;
 
                     // FIXME: error if multiple found
@@ -112,7 +112,7 @@ impl JvmUnitMethod {
                     let mut local_variable_type_table = vec![];
                     let mut stack_map_table = vec![];
 
-                    for attribute in code.attributes {
+                    for attribute in code_attr.attributes {
                         let attribute_name =
                             get_string(jvm_strings, &attribute.attribute_name_index)?
                                 .convert_to_string();
@@ -224,11 +224,11 @@ impl JvmUnitMethod {
                         }
                     }
 
-                    code_opt = Some(Code {
-                        max_stack: code.max_stack,
-                        max_locals: code.max_locals,
-                        code: code.code,
-                        exception_table: code
+                    code = Some(Code {
+                        max_stack: code_attr.max_stack,
+                        max_locals: code_attr.max_locals,
+                        code: code_attr.code,
+                        exception_table: code_attr
                             .exception_table
                             .into_iter()
                             .map(|v| {
@@ -236,7 +236,11 @@ impl JvmUnitMethod {
                                     start_pc: v.start_pc,
                                     end_pc: v.end_pc,
                                     handler_pc: v.handler_pc,
-                                    catch_type: get_class(loadable_constant_pool, &v.catch_type)?,
+                                    catch_type: if v.catch_type == 0 {
+                                        None
+                                    } else {
+                                        Some(get_class(loadable_constant_pool, &v.catch_type)?)
+                                    },
                                 })
                             })
                             .collect::<Result<Vec<_>>>()?,
@@ -294,13 +298,15 @@ impl JvmUnitMethod {
             }
         }
 
+        if code.is_none() && !is_native && !is_abstract {
+            bail!(
+                "no code attribute present in method {}, but it is not native nor abstract",
+                name.convert_to_string()
+            );
+        }
+
         Ok(Self {
-            code: code_opt.ok_or_else(|| {
-                anyhow!(
-                    "no Code attribute found for method {}",
-                    name.convert_to_string()
-                )
-            })?,
+            code,
             name,
             descriptor: ty,
             exceptions: exceptions_opt.unwrap_or_default(),

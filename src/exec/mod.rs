@@ -98,7 +98,7 @@ impl JvmExecEnv {
                         )
                     } else {
                         let cp_start = self.code.len();
-                        self.code.extend_from_slice(&m.code.code);
+                        self.code.extend_from_slice(&m.code.unwrap().code);
                         let cp_end = self.code.len();
 
                         Method::new_normal(
