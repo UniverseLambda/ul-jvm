@@ -4,14 +4,14 @@ use anyhow::{Context, bail};
 use binrw::BinRead;
 use cached::proc_macro::cached;
 use class::{JvmUnit, parser::ClassFile};
+use class_container::ClassContainer;
 use either::Either;
 use exec::JvmExecEnv;
-use jar::JarFile;
 use log::{debug, info, warn};
 
 mod class;
+mod class_container;
 mod exec;
-mod jar;
 mod types;
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
                 &class,
                 &[
                     ".".to_string(),
-                    "/usr/lib/jvm/jre/lib/jrt-fs.jar".to_string(),
+                    "/usr/lib/jvm/jre/jmods/java.base.jmod".to_string(),
                 ],
             )
             .expect(&format!("unable to load class file {class}"));
@@ -45,8 +45,12 @@ pub fn load_unit(full_name: &str, class_path: &[String]) -> anyhow::Result<JvmUn
     let mut source = None;
 
     for current_dir in class_path {
-        if current_dir.ends_with(".jar") || current_dir.ends_with(".JAR") {
-            let mut jar_file = match read_jar(current_dir) {
+        if current_dir.ends_with(".jar")
+            || current_dir.ends_with(".JAR")
+            || current_dir.ends_with(".jmod")
+            || current_dir.ends_with(".JMOD")
+        {
+            let jar_file = match read_container(current_dir) {
                 Ok(v) => v,
                 Err(e) => {
                     warn!("unable to read JAR file {current_dir}: {e}. Skipping...");
@@ -82,7 +86,7 @@ pub fn load_unit(full_name: &str, class_path: &[String]) -> anyhow::Result<JvmUn
         bail!("no JVM unit in class path for {full_name}");
     };
 
-    debug!("Found class file for {full_name} at {source:?}");
+    debug!("Found class file for {full_name}");
 
     let parsed_class = match source {
         Either::Left(mut v) => ClassFile::read(&mut v)?,
@@ -111,6 +115,6 @@ pub fn load_unit(full_name: &str, class_path: &[String]) -> anyhow::Result<JvmUn
 }
 
 #[cached(result = true, key = "String", convert = r##"{ path.to_string() }"##)]
-fn read_jar(path: &str) -> anyhow::Result<JarFile> {
-    JarFile::new(Path::new(path))
+fn read_container(path: &str) -> anyhow::Result<ClassContainer> {
+    ClassContainer::new(Path::new(path))
 }

@@ -1,22 +1,24 @@
 use std::{
     collections::HashSet,
+    ffi::OsStr,
     fs::OpenOptions,
     io::{Cursor, Read},
     path::{Path, PathBuf},
 };
 
-use log::debug;
+use log::{debug, trace};
 use zip::ZipArchive;
 
 #[derive(Clone, PartialEq)]
-pub struct JarFile {
+pub struct ClassContainer {
     original_path: PathBuf,
     units: HashSet<String>,
     other_files: HashSet<String>,
+    is_jmod: bool,
     // main_class: Option<String>,
 }
 
-impl JarFile {
+impl ClassContainer {
     pub fn new(path: &Path) -> anyhow::Result<Self> {
         debug!("Analyzing jar file at {path:?}");
 
@@ -24,15 +26,26 @@ impl JarFile {
 
         let mut units = HashSet::new();
         let mut other_files = HashSet::new();
+        let is_jmod = if let Some(ext) = path.extension() {
+            ext.to_string_lossy() == "jmod"
+        } else {
+            false
+        };
 
         for file_number in 0..archive.len() {
             let filename = archive.by_index(file_number)?.name().to_string();
 
-            if filename.ends_with(".class") || filename.ends_with(".CLASS") {
-                debug!("Found class file: {filename}");
-                units.insert((&filename[..filename.len() - 6]).to_string());
+            if (!is_jmod || filename.starts_with("classes/")) && (filename.ends_with(".class")) {
+                let local_fullname = (filename
+                    .trim_start_matches("classes/")
+                    .trim_end_matches(".class"))
+                .to_string();
+
+                trace!("Found class file for {local_fullname} at {filename}");
+
+                units.insert(local_fullname);
             } else {
-                debug!("Found other file: {filename}");
+                trace!("Found other file: {filename}");
                 other_files.insert(filename);
             }
         }
@@ -41,6 +54,7 @@ impl JarFile {
             original_path: path.to_path_buf(),
             units,
             other_files,
+            is_jmod,
         })
     }
 
@@ -54,9 +68,13 @@ impl JarFile {
 
         let mut content = vec![];
 
-        archive
-            .by_name_seek(&format!("{unit_name}.class"))?
-            .read_to_end(&mut content)?;
+        let unit_path = if self.is_jmod {
+            format!("classes/{unit_name}.class")
+        } else {
+            format!("{unit_name}.class")
+        };
+
+        archive.by_name(&unit_path)?.read_to_end(&mut content)?;
 
         Ok(Cursor::new(content))
     }

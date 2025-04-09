@@ -295,9 +295,14 @@ impl JvmUnitMethod {
         }
 
         Ok(Self {
+            code: code_opt.ok_or_else(|| {
+                anyhow!(
+                    "no Code attribute found for method {}",
+                    name.convert_to_string()
+                )
+            })?,
             name,
             descriptor: ty,
-            code: code_opt.ok_or_else(|| anyhow!("no Code attribute found"))?,
             exceptions: exceptions_opt.unwrap_or_default(),
             parameters: parameters_opt,
             signature,
