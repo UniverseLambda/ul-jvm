@@ -1,14 +1,17 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, iter::once, sync::Arc};
 
-use anyhow::bail;
 use class::{Class, ClassField};
 use either::Either;
 use heap::JvmHeap;
 use interface::Interface;
 use method::Method;
+use runtime_type::RuntimeType;
 use thread::JvmThread;
 
-use crate::class::{JvmClass, JvmUnit, JvmUnitField, JvmUnitType};
+use crate::{
+    class::{JvmClass, JvmUnit, JvmUnitField, JvmUnitMethod, JvmUnitType},
+    types::JvmTypeDescriptor,
+};
 
 pub mod array;
 pub mod class;
@@ -27,6 +30,7 @@ pub struct JvmExecEnv {
     pub code: Vec<u8>,
 
     pub partial_classes: Vec<PartialClass>,
+    pub required_units: Vec<String>,
 }
 
 impl JvmExecEnv {
@@ -39,25 +43,53 @@ impl JvmExecEnv {
             start_class: None,
             code: Vec::new(),
             partial_classes: Vec::new(),
+            required_units: Vec::new(),
         }
     }
 
     pub fn missing_units(&self) -> Vec<String> {
-        self.partial_classes
+        let mut res = self
+            .partial_classes
             .iter()
             .map(|c| c.missing_unit_names())
             .fold(Vec::new(), |mut v, next| {
                 v.extend(next);
                 v
-            })
+            });
+
+        res.extend_from_slice(&self.required_units);
+
+        res
     }
 
     pub fn add_unit(&mut self, jvm_unit: JvmUnit) -> bool {
         let parse_field = |f: &JvmUnitField| ClassField {
             name: Arc::new(f.name.convert_to_string()),
-            value: f.constant_value.clone().into(),
+            value: f
+                .constant_value
+                .clone()
+                .map(|cv| RuntimeType::from(cv))
+                .unwrap_or(RuntimeType::default_of(&f.ty)),
             is_final: f.is_final,
         };
+
+        for field in jvm_unit.fields.iter() {
+            if let JvmTypeDescriptor::Class(c) = &field.ty {
+                self.required_units.push(c.clone());
+            }
+        }
+
+        for JvmUnitMethod { descriptor, .. } in jvm_unit.methods.iter() {
+            for ty in descriptor
+                .parameter_types
+                .iter()
+                .chain(once(descriptor.return_type.as_ref()).filter_map(|v| v))
+            {
+                if let JvmTypeDescriptor::Class(c) = ty {
+                    self.required_units.push(c.clone());
+                }
+            }
+        }
 
         let fields = jvm_unit
             .fields
@@ -147,7 +179,7 @@ impl JvmExecEnv {
 
     fn try_complete(&mut self) -> bool {
         loop {
-            if self.partial_classes.is_empty() {
+            if !self.partial_classes.is_empty() {
                 break;
             }
 
@@ -174,7 +206,16 @@ impl JvmExecEnv {
             }
         }
 
-        self.partial_classes.is_empty()
+        let mut still_missing = vec![];
+
+        for missing in self.required_units.drain(..) {
+            if !self.classes.contains_key(&missing) && !self.interfaces.contains_key(&missing) {
+                still_missing.push(missing);
+            }
+        }
+
+        self.required_units = still_missing;
+        self.partial_classes.is_empty() && self.required_units.is_empty()
     }
 }
 

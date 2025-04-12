@@ -15,7 +15,7 @@ use super::{
         MethodParameter, Signature, StackMapFrame, StackMapTable, VerificationTypeInfo,
     },
     constant_pool::{ConstantClass, ConstantJvmUtf8, LoadableJvmConstant},
-    get_class, get_string,
+    get_class, get_string, get_string_opt,
     parser::{self, MethodAccessFlags, MethodInfo, attributes::MethodParametersEntryAccessFlag},
 };
 
@@ -271,7 +271,7 @@ impl JvmUnitMethod {
                             .into_iter()
                             .map(|v| {
                                 Ok(MethodParameter {
-                                    name: get_string(jvm_strings, &v.name_index)?,
+                                    name: get_string_opt(jvm_strings, &v.name_index),
                                     is_final: v
                                         .access_flags
                                         .contains(&MethodParametersEntryAccessFlag::Final),

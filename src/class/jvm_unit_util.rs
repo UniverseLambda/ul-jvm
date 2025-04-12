@@ -7,14 +7,18 @@ use super::{
     parser::ConstantPoolInfo,
 };
 
+pub(super) fn get_string_opt(
+    jvm_strings: &HashMap<u16, ConstantJvmUtf8>,
+    idx: &u16,
+) -> Option<ConstantJvmUtf8> {
+    jvm_strings.get(idx).cloned()
+}
+
 pub(super) fn get_string(
     jvm_strings: &HashMap<u16, ConstantJvmUtf8>,
     idx: &u16,
 ) -> anyhow::Result<ConstantJvmUtf8> {
-    jvm_strings
-        .get(idx)
-        .cloned()
-        .ok_or_else(|| anyhow!("no strings in constant pool at {idx}"))
+    get_string_opt(jvm_strings, idx).ok_or_else(|| anyhow!("no strings in constant pool at {idx}"))
 }
 
 pub(super) fn get_name_and_type(

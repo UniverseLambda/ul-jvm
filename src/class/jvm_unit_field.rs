@@ -20,7 +20,7 @@ pub struct JvmUnitField {
     pub name: ConstantJvmUtf8,
     pub vis: JvmVisibility,
     pub ty: JvmTypeDescriptor,
-    pub constant_value: LoadableJvmConstant,
+    pub constant_value: Option<LoadableJvmConstant>,
     pub signature: Option<Signature>,
     pub is_deprecated: bool,
     pub is_static: bool,
@@ -111,8 +111,7 @@ impl JvmUnitField {
             name,
             vis,
             ty,
-            constant_value: constant_value
-                .ok_or_else(|| anyhow!("no ConstantValue attribute in field"))?,
+            constant_value,
             signature,
             is_deprecated,
             is_static,

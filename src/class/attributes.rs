@@ -248,7 +248,7 @@ pub struct Deprecated {}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct MethodParameter {
-    pub name: ConstantJvmUtf8,
+    pub name: Option<ConstantJvmUtf8>,
     pub is_final: bool,
     pub is_synthetic: bool,
     pub is_mandated: bool,
