@@ -20,7 +20,7 @@ fn main() {
     info!("uLambda's JVM version {}", env!("CARGO_PKG_VERSION"));
     let mut jvm_exec_env = JvmExecEnv::new();
 
-    let first_unit = load_unit("Main", &[".".to_string()]).expect("loading Main.class");
+    let first_unit = load_unit("Main", &[".".to_string()], true).expect("loading Main.class");
 
     let mut done = jvm_exec_env.add_unit(first_unit);
 
@@ -32,6 +32,7 @@ fn main() {
                     ".".to_string(),
                     "/usr/lib/jvm/jre/jmods/java.base.jmod".to_string(),
                 ],
+                false,
             )
             .expect(&format!("unable to load class file {class}"));
 
@@ -40,7 +41,7 @@ fn main() {
     }
 }
 
-pub fn load_unit(full_name: &str, class_path: &[String]) -> anyhow::Result<JvmUnit> {
+pub fn load_unit(full_name: &str, class_path: &[String], dump: bool) -> anyhow::Result<JvmUnit> {
     debug!("Looking up class file for {full_name} in {class_path:?}...");
     let mut source = None;
 
@@ -93,23 +94,27 @@ pub fn load_unit(full_name: &str, class_path: &[String]) -> anyhow::Result<JvmUn
         Either::Right(mut v) => ClassFile::read(&mut v)?,
     };
 
-    info!("Dumping parsed class file...");
-    std::fs::write(
-        format!("{}-class_dump.json", full_name.replace('/', ".")),
-        serde_json::to_string_pretty(&parsed_class).unwrap(),
-    )
-    .context("write parsed class file dump JSON")?;
+    if dump {
+        info!("Dumping parsed class file...");
+        std::fs::write(
+            format!("{}-class_dump.json", full_name.replace('/', ".")),
+            serde_json::to_string_pretty(&parsed_class).unwrap(),
+        )
+        .context("write parsed class file dump JSON")?;
+    }
 
     debug!("Putting everything nice and cosy");
     let jvm_unit =
         JvmUnit::from_class_file(parsed_class).context("creating JVM unit from class file")?;
 
-    info!("Dumping processed JVM unit...");
-    std::fs::write(
-        format!("{}-jvm_unit_dump.json", full_name.replace('/', ".")),
-        serde_json::to_string_pretty(&jvm_unit).unwrap(),
-    )
-    .context("write unit dump JSON")?;
+    if dump {
+        info!("Dumping processed JVM unit...");
+        std::fs::write(
+            format!("{}-jvm_unit_dump.json", full_name.replace('/', ".")),
+            serde_json::to_string_pretty(&jvm_unit).unwrap(),
+        )
+        .context("write unit dump JSON")?;
+    }
 
     Ok(jvm_unit)
 }

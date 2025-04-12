@@ -1,5 +1,5 @@
 use crate::{
-    class::constant_pool::LoadableJvmConstant,
+    class::constant_pool::{ConstantJvmUtf8, LoadableJvmConstant},
     types::{JvmDouble, JvmFloat, JvmInt, JvmLong, JvmTypeDescriptor},
 };
 
@@ -13,15 +13,14 @@ pub enum RuntimeType {
     Double(JvmDouble),
     Array(ArrayRef),
     Class(ClassRef),
+    InternedString(ConstantJvmUtf8),
 }
 
 impl From<LoadableJvmConstant> for RuntimeType {
     fn from(value: LoadableJvmConstant) -> Self {
         match value {
             LoadableJvmConstant::Class(_) => Self::Class(ClassRef::new_null()),
-            LoadableJvmConstant::String(_) => {
-                todo!("String from constant not yet implemented")
-            }
+            LoadableJvmConstant::String(string) => Self::InternedString(string),
             LoadableJvmConstant::Integer(v) => Self::Int(v),
             LoadableJvmConstant::Float(v) => Self::Float(v),
             LoadableJvmConstant::Long(v) => Self::Long(v),

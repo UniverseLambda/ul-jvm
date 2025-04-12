@@ -66,8 +66,9 @@ impl JvmExecEnv {
         let parse_field = |f: &JvmUnitField| ClassField {
             name: Arc::new(f.name.convert_to_string()),
             value: f
-                .constant_value
-                .clone()
+                .is_static
+                .then_some(())
+                .and_then(|_| f.constant_value.clone())
                 .map(|cv| RuntimeType::from(cv))
                 .unwrap_or(RuntimeType::default_of(&f.ty)),
             is_final: f.is_final,
@@ -101,6 +102,7 @@ impl JvmExecEnv {
         let static_fields = jvm_unit
             .fields
             .iter()
+            .filter(|f| f.is_static)
             .map(parse_field)
             .collect::<Vec<ClassField>>()
             .into_boxed_slice();
