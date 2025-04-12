@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::Cursor, str::FromStr};
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Result, bail};
 use binrw::BinRead;
 use log::warn;
 use serde::Serialize;

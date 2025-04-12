@@ -145,6 +145,12 @@ impl JvmUnit {
             .map(|(idx, c)| (idx as u16, c))
         {
             match constant {
+                ConstantPoolInfo::String { string_index } => {
+                    loadable_constant_pool.insert(
+                        idx,
+                        LoadableJvmConstant::String(get_string(&jvm_strings, string_index)?),
+                    );
+                }
                 ConstantPoolInfo::Class { name_index } => {
                     loadable_constant_pool.insert(
                         idx,
