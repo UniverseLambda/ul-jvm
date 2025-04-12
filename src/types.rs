@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use anyhow::{Context, anyhow, bail};
-use log::{debug, trace};
 use serde::Serialize;
 
 pub type JvmInt = i32;

@@ -1,4 +1,8 @@
-use std::{collections::HashMap, iter::once, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    iter::once,
+    sync::Arc,
+};
 
 use class::{Class, ClassField};
 use either::Either;
@@ -47,22 +51,24 @@ impl JvmExecEnv {
         }
     }
 
-    pub fn missing_units(&self) -> Vec<String> {
+    pub fn missing_units(&self) -> HashSet<String> {
         let mut res = self
             .partial_classes
             .iter()
             .map(|c| c.missing_unit_names())
-            .fold(Vec::new(), |mut v, next| {
+            .fold(HashSet::new(), |mut v, next| {
                 v.extend(next);
                 v
             });
 
-        res.extend_from_slice(&self.required_units);
+        res.extend(self.required_units.iter().cloned());
 
         res
     }
 
     pub fn add_unit(&mut self, jvm_unit: JvmUnit) -> bool {
+        let class_name = jvm_unit.this_class.name.convert_to_string();
+
         let parse_field = |f: &JvmUnitField| ClassField {
             name: Arc::new(f.name.convert_to_string()),
             value: f
@@ -76,7 +82,9 @@ impl JvmExecEnv {
 
         for field in jvm_unit.fields.iter() {
             if let JvmTypeDescriptor::Class(c) = &field.ty {
-                self.required_units.push(c.clone());
+                if c != &class_name {
+                    self.required_units.push(c.clone());
+                }
             }
         }
 
@@ -87,7 +95,9 @@ impl JvmExecEnv {
                 .chain(once(descriptor.return_type.as_ref()).filter_map(|v| v))
             {
                 if let JvmTypeDescriptor::Class(c) = ty {
-                    self.required_units.push(c.clone());
+                    if c != &class_name {
+                        self.required_units.push(c.clone());
+                    }
                 }
             }
         }
@@ -154,7 +164,7 @@ impl JvmExecEnv {
                     super_class: jvm_unit
                         .super_class
                         .map(|s| Either::Left(s.name.convert_to_string())),
-                    name: jvm_unit.this_class.name.convert_to_string(),
+                    name: class_name,
                     static_fields,
                     fields,
                     methods,
@@ -167,10 +177,10 @@ impl JvmExecEnv {
                 });
             }
             JvmUnitType::Interface(_) => {
-                let name = jvm_unit.this_class.name.convert_to_string();
-
-                self.interfaces
-                    .insert(name.clone(), Interface::new(name, static_fields));
+                self.interfaces.insert(
+                    class_name.clone(),
+                    Interface::new(class_name, static_fields),
+                );
             }
             JvmUnitType::Record(_) => todo!(),
             JvmUnitType::Module(_) => (), // TODO: Modules
@@ -274,7 +284,7 @@ impl JvmExecEnv {
 // }
 // }
 
-struct PartialClass {
+pub struct PartialClass {
     super_class: Option<Either<String, Class>>,
     name: String,
     static_fields: Box<[ClassField]>,
