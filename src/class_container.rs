@@ -3,13 +3,18 @@ use std::{
     fs::OpenOptions,
     io::{Cursor, Read},
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
+use cached::proc_macro::cached;
 use log::{debug, trace};
 use zip::ZipArchive;
 
-#[derive(Clone, PartialEq)]
-pub struct ClassContainer {
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClassContainer(Arc<ClassContainerInner>);
+
+#[derive(Debug, PartialEq)]
+struct ClassContainerInner {
     original_path: PathBuf,
     units: HashSet<String>,
     other_files: HashSet<String>,
@@ -49,25 +54,25 @@ impl ClassContainer {
             }
         }
 
-        Ok(Self {
+        Ok(Self(Arc::new(ClassContainerInner {
             original_path: path.to_path_buf(),
             units,
             other_files,
             is_jmod,
-        })
+        })))
     }
 
     pub fn has_unit(&self, unit_name: &str) -> bool {
-        self.units.contains(unit_name)
+        self.0.units.contains(unit_name)
     }
 
     pub fn read_class_file(&self, unit_name: &str) -> anyhow::Result<Cursor<Vec<u8>>> {
         let mut archive =
-            ZipArchive::new(OpenOptions::new().read(true).open(&self.original_path)?)?;
+            ZipArchive::new(OpenOptions::new().read(true).open(&self.0.original_path)?)?;
 
         let mut content = vec![];
 
-        let unit_path = if self.is_jmod {
+        let unit_path = if self.0.is_jmod {
             format!("classes/{unit_name}.class")
         } else {
             format!("{unit_name}.class")
@@ -77,4 +82,9 @@ impl ClassContainer {
 
         Ok(Cursor::new(content))
     }
+}
+
+#[cached(result = true, key = "String", convert = r##"{ path.to_string() }"##)]
+pub fn read_container(path: &str) -> anyhow::Result<ClassContainer> {
+    ClassContainer::new(Path::new(path))
 }

@@ -2,9 +2,8 @@ use std::path::Path;
 
 use anyhow::{Context, bail};
 use binrw::BinRead;
-use cached::proc_macro::cached;
 use class::{JvmUnit, parser::ClassFile};
-use class_container::ClassContainer;
+use class_container::read_container;
 use either::Either;
 use exec::JvmExecEnv;
 use log::{debug, info, warn};
@@ -22,7 +21,7 @@ fn main() {
 
     let first_unit = load_unit("Main", &[".".to_string()], true).expect("loading Main.class");
 
-    let mut done = jvm_exec_env.add_unit(first_unit);
+    let mut done = jvm_exec_env.add_unit(first_unit, true);
 
     while !done {
         for class in jvm_exec_env.missing_units() {
@@ -37,12 +36,14 @@ fn main() {
             )
             .unwrap_or_else(|_| panic!("unable to load class file {class}"));
 
-            done = jvm_exec_env.add_unit(jvm_unit);
+            done = jvm_exec_env.add_unit(jvm_unit, false);
         }
     }
 }
 
 pub fn load_unit(full_name: &str, class_path: &[String], dump: bool) -> anyhow::Result<JvmUnit> {
+    // TODO: cache units location
+
     debug!("Looking up class file for {full_name} in {class_path:?}...");
     let mut source = None;
 
@@ -118,9 +119,4 @@ pub fn load_unit(full_name: &str, class_path: &[String], dump: bool) -> anyhow::
     }
 
     Ok(jvm_unit)
-}
-
-#[cached(result = true, key = "String", convert = r##"{ path.to_string() }"##)]
-fn read_container(path: &str) -> anyhow::Result<ClassContainer> {
-    ClassContainer::new(Path::new(path))
 }

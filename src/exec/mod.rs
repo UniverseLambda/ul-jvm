@@ -8,6 +8,7 @@ use class::{Class, ClassField};
 use either::Either;
 use heap::JvmHeap;
 use interface::Interface;
+use log::debug;
 use method::Method;
 use runtime_type::RuntimeType;
 use thread::JvmThread;
@@ -34,7 +35,8 @@ pub struct JvmExecEnv {
     pub code: Vec<u8>,
 
     pub partial_classes: Vec<PartialClass>,
-    pub required_units: Vec<String>,
+    pub required_units: HashSet<String>,
+    pub differed_units: HashSet<String>,
 }
 
 impl JvmExecEnv {
@@ -47,7 +49,8 @@ impl JvmExecEnv {
             start_class: None,
             code: Vec::new(),
             partial_classes: Vec::new(),
-            required_units: Vec::new(),
+            required_units: HashSet::new(),
+            differed_units: HashSet::new(),
         }
     }
 
@@ -55,18 +58,25 @@ impl JvmExecEnv {
         let mut res = self
             .partial_classes
             .iter()
-            .map(|c| c.missing_unit_names())
+            .map(|c| {
+                let missing = c.missing_unit_names();
+                debug!("Missing unit names for {}: {:?}", c.name, missing);
+
+                missing
+            })
             .fold(HashSet::new(), |mut v, next| {
                 v.extend(next);
                 v
             });
+
+        debug!("required_units: {:?}", self.required_units);
 
         res.extend(self.required_units.iter().cloned());
 
         res
     }
 
-    pub fn add_unit(&mut self, jvm_unit: JvmUnit) -> bool {
+    pub fn add_unit(&mut self, jvm_unit: JvmUnit, eager_loading: bool) -> bool {
         let class_name = jvm_unit.this_class.name.convert_to_string();
 
         let parse_field = |f: &JvmUnitField| ClassField {
@@ -83,7 +93,7 @@ impl JvmExecEnv {
         for field in jvm_unit.fields.iter() {
             if let JvmTypeDescriptor::Class(c) = &field.ty {
                 if c != &class_name {
-                    self.required_units.push(c.clone());
+                    self.required_units.insert(c.clone());
                 }
             }
         }
@@ -96,7 +106,11 @@ impl JvmExecEnv {
             {
                 if let JvmTypeDescriptor::Class(c) = ty {
                     if c != &class_name {
-                        self.required_units.push(c.clone());
+                        if eager_loading {
+                            self.required_units.insert(c.clone());
+                        } else {
+                            self.differed_units.insert(c.clone());
+                        }
                     }
                 }
             }
@@ -191,7 +205,7 @@ impl JvmExecEnv {
 
     fn try_complete(&mut self) -> bool {
         loop {
-            if !self.partial_classes.is_empty() {
+            if self.partial_classes.is_empty() {
                 break;
             }
 
@@ -218,72 +232,24 @@ impl JvmExecEnv {
             }
         }
 
-        let mut still_missing = vec![];
+        let mut still_missing = HashSet::new();
 
-        for missing in self.required_units.drain(..) {
-            if !self.classes.contains_key(&missing) && !self.interfaces.contains_key(&missing) {
-                still_missing.push(missing);
+        for missing in self.required_units.drain() {
+            if !self.classes.contains_key(&missing)
+                && !self.interfaces.contains_key(&missing)
+                && !self.partial_classes.iter().any(|c| c.name == missing)
+            {
+                still_missing.insert(missing);
             }
         }
 
         self.required_units = still_missing;
+
         self.partial_classes.is_empty() && self.required_units.is_empty()
     }
 }
 
-// pub struct JvmExecEnvBuilder {
-//     pub classes: HashMap<String, Class>,
-//     pub interfaces: HashMap<String, Interface>,
-//     pub start_class: Option<String>,
-//     pub code: Vec<u8>,
-
-//     pub partial_classes: Vec<PartialClass>,
-// }
-
-// impl JvmExecEnvBuilder {
-// pub fn next_missing_class(&mut self) -> anyhow::Result<JvmExecEnv>
-
-// pub fn build(&mut self) -> anyhow::Result<JvmExecEnv> {
-//     let mut to_treat: Vec<PartialClass> = self.partial_classes.drain(..).collect();
-
-//     loop {
-//         if to_treat.is_empty() {
-//             break;
-//         }
-
-//         let last_partial_count = to_treat.len();
-//         let mut still_incomplete = vec![];
-
-//         for content in to_treat {
-//             match content.try_complete(&self.classes, &self.interfaces) {
-//                 Either::Left(incomplete) => still_incomplete.push(incomplete),
-//                 Either::Right(complete) => {
-//                     self.classes.insert(complete.name.clone(), complete);
-//                 }
-//             }
-//         }
-
-//         if still_incomplete.len() == last_partial_count {
-//             let missing_names = still_incomplete
-//                 .into_iter()
-//                 .map(|c| c.name)
-//                 .collect::<Vec<_>>();
-
-//             bail!("Unable to resolve some classes: {missing_names:?}",);
-//         }
-
-//         to_treat = still_incomplete;
-//     }
-
-//     Ok(JvmExecEnv {
-//         classes: self.classes.drain().collect(),
-//         heap: JvmHeap::new(),
-//         threads: vec![],
-//         start_class: todo!(),
-//     })
-// }
-// }
-
+#[derive(Debug)]
 pub struct PartialClass {
     super_class: Option<Either<String, Class>>,
     name: String,
@@ -334,7 +300,7 @@ impl PartialClass {
             }
         }
 
-        if self.super_class.as_ref().is_none_or(|s| s.is_right()) && incomplete_interfaces == 0 {
+        if self.super_class.as_ref().is_none_or(Either::is_right) && incomplete_interfaces == 0 {
             Either::Right(Class::new(
                 self.super_class.map(|s| s.unwrap_right()),
                 self.interfaces
