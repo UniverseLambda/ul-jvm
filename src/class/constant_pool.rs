@@ -3,10 +3,9 @@ use serde::Serialize;
 
 use crate::types::{JvmDouble, JvmFloat, JvmInt, JvmLong, JvmMethodDescriptor, JvmTypeDescriptor};
 
-use super::parser::ModifiedUtf8String;
 use std::sync::Arc;
 
-pub type ConstantJvmUtf8 = Arc<ModifiedUtf8String>;
+pub type ConstantJvmUtf8 = Arc<String>;
 pub type ConstantInteger = JvmInt;
 pub type ConstantFloat = JvmFloat;
 pub type ConstantLong = JvmLong;

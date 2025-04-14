@@ -73,9 +73,7 @@ impl JvmUnitMethod {
         let is_strict = info.access_flags.contains(&MethodAccessFlags::Strict);
         let mut is_synthetic = info.access_flags.contains(&MethodAccessFlags::Synthetic);
 
-        let ty = JvmMethodDescriptor::from_str(
-            &get_string(jvm_strings, &info.descriptor_index)?.convert_to_string(),
-        )?;
+        let ty = JvmMethodDescriptor::from_str(&get_string(jvm_strings, &info.descriptor_index)?)?;
 
         let mut signature = None;
         let mut is_deprecated = false;
@@ -84,8 +82,7 @@ impl JvmUnitMethod {
         let mut parameters_opt = None;
 
         for attribute in info.attributes.iter() {
-            let attribute_name =
-                get_string(jvm_strings, &attribute.attribute_name_index)?.convert_to_string();
+            let attribute_name = get_string(jvm_strings, &attribute.attribute_name_index)?;
 
             match attribute_name.as_str() {
                 "Signature" => {
@@ -111,8 +108,7 @@ impl JvmUnitMethod {
 
                     for attribute in code_attr.attributes {
                         let attribute_name =
-                            get_string(jvm_strings, &attribute.attribute_name_index)?
-                                .convert_to_string();
+                            get_string(jvm_strings, &attribute.attribute_name_index)?;
 
                         match attribute_name.as_str() {
                             "LineNumberTable" => {
@@ -146,8 +142,7 @@ impl JvmUnitMethod {
                                                 length: v.length,
                                                 name: get_string(jvm_strings, &v.name_index)?,
                                                 descriptor: JvmTypeDescriptor::from_str(
-                                                    &get_string(jvm_strings, &v.descriptor_index)?
-                                                        .convert_to_string(),
+                                                    &get_string(jvm_strings, &v.descriptor_index)?,
                                                 )?,
                                                 index: v.index,
                                             })
@@ -298,7 +293,7 @@ impl JvmUnitMethod {
         if code.is_none() && !is_native && !is_abstract {
             bail!(
                 "no code attribute present in method {}, but it is not native nor abstract",
-                name.convert_to_string()
+                name
             );
         }
 

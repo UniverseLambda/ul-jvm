@@ -1,4 +1,16 @@
-use std::{collections::HashMap, ops::Deref, sync::Arc};
+use std::{
+    collections::HashMap,
+    ops::Deref,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
+
+use anyhow::{anyhow, bail};
+use parking_lot::{Mutex, ReentrantMutex, RwLock};
+
+use crate::class::constant_pool::{ConstantFieldref, LoadableJvmConstant};
 
 use super::{interface::Interface, method::Method, runtime_type::RuntimeType};
 
@@ -45,8 +57,9 @@ impl Class {
     pub fn new(
         super_class: Option<Class>,
         interfaces: Vec<Interface>,
-        name: String,
-        static_fields: Box<[ClassField]>,
+        name: Arc<String>,
+        constant_pool: ConstantPool,
+        static_fields: HashMap<String, ClassField>,
         fields: Box<[ClassField]>,
         methods: HashMap<String, Method>,
         is_abstract: bool,
@@ -55,11 +68,49 @@ impl Class {
             super_class,
             interfaces,
             name,
-            static_fields,
+            constant_pool,
+            static_fields: ReentrantMutex::new(
+                static_fields
+                    .into_iter()
+                    .map(|(k, v)| (k, Mutex::new(v)))
+                    .collect(),
+            ),
+            statics_initialized: AtomicBool::new(false),
             fields,
             methods,
             is_abstract,
         }))
+    }
+
+    pub fn read_static(&self, name: &String) -> anyhow::Result<RuntimeType> {
+        // FIXME: throw an error when the statics are not yet initialized
+
+        self.0
+            .static_fields
+            .lock()
+            .get(name)
+            .map(|s| s.lock().value.clone())
+            .ok_or(anyhow!("no static field at {}@{name}", self.name))
+    }
+
+    pub fn write_static(&self, name: &String, value: RuntimeType) -> anyhow::Result<()> {
+        let lock = self.0.static_fields.lock();
+        let var_lock = lock
+            .get(name)
+            .ok_or(anyhow!("no static field at {}@{name}", self.name))?;
+
+        let mut var = var_lock.lock();
+
+        if var.is_final {
+            bail!(
+                "tried to assign static field {}@{name}, but it is declared as final",
+                self.name,
+            );
+        }
+
+        var.value = value;
+
+        Ok(())
     }
 }
 
@@ -78,11 +129,35 @@ impl Deref for Class {
 }
 
 #[derive(Debug, Clone)]
+pub struct ConstantPool {
+    loadables: HashMap<u16, LoadableJvmConstant>,
+    fieldrefs: HashMap<u16, ConstantFieldref>,
+}
+
+impl ConstantPool {
+    pub fn new(
+        loadables: HashMap<u16, LoadableJvmConstant>,
+        fieldrefs: HashMap<u16, ConstantFieldref>,
+    ) -> Self {
+        Self {
+            loadables,
+            fieldrefs,
+        }
+    }
+
+    pub fn get_field_ref(&self, cp_index: u16) -> Option<ConstantFieldref> {
+        self.fieldrefs.get(&cp_index).cloned()
+    }
+}
+
+#[derive(Debug)]
 pub struct InnerClass {
     pub super_class: Option<Class>,
     pub interfaces: Vec<Interface>,
-    pub name: String,
-    pub static_fields: Box<[ClassField]>,
+    pub name: Arc<String>,
+    pub constant_pool: ConstantPool,
+    static_fields: ReentrantMutex<HashMap<String, Mutex<ClassField>>>,
+    statics_initialized: AtomicBool,
     pub fields: Box<[ClassField]>,
     pub methods: HashMap<String, Method>,
     pub is_abstract: bool,

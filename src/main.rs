@@ -7,6 +7,7 @@ use class_container::read_container;
 use either::Either;
 use exec::JvmExecEnv;
 use log::{debug, info, warn};
+use types::JvmTypeDescriptor;
 
 mod class;
 mod class_container;
@@ -39,6 +40,18 @@ fn main() {
             done = jvm_exec_env.add_unit(jvm_unit, false);
         }
     }
+
+    let start_class = jvm_exec_env.start_class.expect("no start class found");
+
+    let main_method = start_class.methods.iter().find(|(name, method)| {
+        *name == "main"
+            && method.ret_type().is_none()
+            && method.is_static()
+            && method.parameters()
+                == &[JvmTypeDescriptor::Array(Box::new(
+                    JvmTypeDescriptor::Class("java/lang/String".into()),
+                ))]
+    });
 }
 
 pub fn load_unit(full_name: &str, class_path: &[String], dump: bool) -> anyhow::Result<JvmUnit> {

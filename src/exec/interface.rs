@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc};
+use std::{collections::HashMap, ops::Deref, sync::Arc};
 
 use super::class::ClassField;
 
@@ -6,7 +6,7 @@ use super::class::ClassField;
 pub struct Interface(Arc<InterfaceInner>);
 
 impl Interface {
-    pub fn new(name: String, static_fields: Box<[ClassField]>) -> Self {
+    pub fn new(name: Arc<String>, static_fields: HashMap<String, ClassField>) -> Self {
         Self(Arc::new(InterfaceInner {
             name,
             static_fields,
@@ -30,6 +30,6 @@ impl Deref for Interface {
 
 #[derive(Debug)]
 pub struct InterfaceInner {
-    pub name: String,
-    pub static_fields: Box<[ClassField]>,
+    pub name: Arc<String>,
+    pub static_fields: HashMap<String, ClassField>,
 }

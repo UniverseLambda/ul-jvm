@@ -31,6 +31,8 @@ pub struct JvmUnit {
     pub interfaces: Vec<ConstantClass>,
     pub fields: Vec<JvmUnitField>,
     pub methods: Vec<JvmUnitMethod>,
+    pub field_refs: HashMap<u16, ConstantFieldref>,
+    pub method_refs: HashMap<u16, ConstantMethodref>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -100,7 +102,8 @@ impl JvmUnit {
         {
             match constant {
                 ConstantPoolInfo::Utf8 { bytes, .. } => {
-                    jvm_strings.insert(idx, ConstantJvmUtf8::new(bytes.clone()));
+                    jvm_strings
+                        .insert(idx, ConstantJvmUtf8::new(bytes.clone().convert_to_string()));
                 }
                 ConstantPoolInfo::Integer { bytes } => {
                     loadable_constant_pool.insert(idx, LoadableJvmConstant::Integer(*bytes));
@@ -160,9 +163,10 @@ impl JvmUnit {
                     );
                 }
                 ConstantPoolInfo::MethodType { descriptor_index } => {
-                    let descriptor = JvmMethodDescriptor::from_str(
-                        &get_string(&jvm_strings, descriptor_index)?.convert_to_string(),
-                    )?;
+                    let descriptor = JvmMethodDescriptor::from_str(&get_string(
+                        &jvm_strings,
+                        descriptor_index,
+                    )?)?;
 
                     loadable_constant_pool
                         .insert(idx, LoadableJvmConstant::MethodType { descriptor });
@@ -175,9 +179,8 @@ impl JvmUnit {
                         get_name_and_type(&class_file.constant_pool, name_and_type_index)?;
 
                     let name = get_string(&jvm_strings, &name_idx)?;
-                    let descriptor = JvmTypeDescriptor::from_str(
-                        &get_string(&jvm_strings, &descriptor_idx)?.convert_to_string(),
-                    )?;
+                    let descriptor =
+                        JvmTypeDescriptor::from_str(&get_string(&jvm_strings, &descriptor_idx)?)?;
 
                     loadable_constant_pool.insert(
                         idx,
@@ -196,9 +199,8 @@ impl JvmUnit {
                         get_name_and_type(&class_file.constant_pool, name_and_type_index)?;
 
                     let name = get_string(&jvm_strings, &name_idx)?;
-                    let descriptor = JvmMethodDescriptor::from_str(
-                        &get_string(&jvm_strings, &descriptor_idx)?.convert_to_string(),
-                    )?;
+                    let descriptor =
+                        JvmMethodDescriptor::from_str(&get_string(&jvm_strings, &descriptor_idx)?)?;
 
                     dynamic_invokes.insert(
                         idx,
@@ -233,9 +235,8 @@ impl JvmUnit {
                         get_name_and_type(&class_file.constant_pool, name_and_type_index)?;
 
                     let name = get_string(&jvm_strings, &name_idx)?;
-                    let descriptor = JvmTypeDescriptor::from_str(
-                        &get_string(&jvm_strings, &descriptor_idx)?.convert_to_string(),
-                    )?;
+                    let descriptor =
+                        JvmTypeDescriptor::from_str(&get_string(&jvm_strings, &descriptor_idx)?)?;
 
                     field_refs.insert(
                         idx,
@@ -259,9 +260,8 @@ impl JvmUnit {
                         get_name_and_type(&class_file.constant_pool, name_and_type_index)?;
 
                     let name = get_string(&jvm_strings, &name_idx)?;
-                    let descriptor = JvmMethodDescriptor::from_str(
-                        &get_string(&jvm_strings, &descriptor_idx)?.convert_to_string(),
-                    )?;
+                    let descriptor =
+                        JvmMethodDescriptor::from_str(&get_string(&jvm_strings, &descriptor_idx)?)?;
 
                     match v {
                         ConstantPoolInfo::Methodref { .. } => {
@@ -450,8 +450,7 @@ impl JvmUnit {
         let mut is_deprecated = false;
 
         for attribute in class_file.attributes.iter() {
-            let attribute_name =
-                get_string(&jvm_strings, &attribute.attribute_name_index)?.convert_to_string();
+            let attribute_name = get_string(&jvm_strings, &attribute.attribute_name_index)?;
 
             match attribute_name.as_str() {
                 "Record" => {
@@ -467,10 +466,10 @@ impl JvmUnit {
                             .map(|v| {
                                 Ok(JvmRecordComponent {
                                     name: get_string(&jvm_strings, &v.name_index)?,
-                                    descriptor: JvmTypeDescriptor::from_str(
-                                        &get_string(&jvm_strings, &v.descriptor_index)?
-                                            .convert_to_string(),
-                                    )?,
+                                    descriptor: JvmTypeDescriptor::from_str(&get_string(
+                                        &jvm_strings,
+                                        &v.descriptor_index,
+                                    )?)?,
                                 })
                             })
                             .collect::<Result<Vec<_>>>()?,
@@ -501,6 +500,8 @@ impl JvmUnit {
             interfaces,
             fields,
             methods,
+            field_refs,
+            method_refs,
         })
     }
 }

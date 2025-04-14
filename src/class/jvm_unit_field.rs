@@ -61,17 +61,14 @@ impl JvmUnitField {
         let mut is_synthetic = info.access_flags.contains(&FieldAccessFlags::Synthetic);
         let is_enum = info.access_flags.contains(&FieldAccessFlags::Enum);
 
-        let ty = JvmTypeDescriptor::from_str(
-            &get_string(jvm_strings, &info.descriptor_index)?.convert_to_string(),
-        )?;
+        let ty = JvmTypeDescriptor::from_str(&get_string(jvm_strings, &info.descriptor_index)?)?;
 
         let mut constant_value = None;
         let mut signature = None;
         let mut is_deprecated = false;
 
         for attribute in info.attributes.iter() {
-            let attribute_name =
-                get_string(jvm_strings, &attribute.attribute_name_index)?.convert_to_string();
+            let attribute_name = get_string(jvm_strings, &attribute.attribute_name_index)?;
 
             match attribute_name.as_str() {
                 "Signature" => {

@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use class::{Class, ClassField};
+use class::{Class, ClassField, ConstantPool};
 use either::Either;
 use heap::JvmHeap;
 use interface::Interface;
@@ -14,7 +14,10 @@ use runtime_type::RuntimeType;
 use thread::JvmThread;
 
 use crate::{
-    class::{JvmClass, JvmUnit, JvmUnitField, JvmUnitMethod, JvmUnitType},
+    class::{
+        JvmClass, JvmUnit, JvmUnitField, JvmUnitMethod, JvmUnitType,
+        constant_pool::LoadableJvmConstant,
+    },
     types::JvmTypeDescriptor,
 };
 
@@ -22,6 +25,7 @@ pub mod array;
 pub mod class;
 pub mod heap;
 pub mod interface;
+pub mod jpu;
 pub mod method;
 pub mod runtime_type;
 pub mod thread;
@@ -44,7 +48,7 @@ impl JvmExecEnv {
         Self {
             classes: HashMap::new(),
             interfaces: HashMap::new(),
-            heap: JvmHeap {},
+            heap: JvmHeap::new(),
             threads: Vec::new(),
             start_class: None,
             code: Vec::new(),
@@ -77,10 +81,10 @@ impl JvmExecEnv {
     }
 
     pub fn add_unit(&mut self, jvm_unit: JvmUnit, eager_loading: bool) -> bool {
-        let class_name = jvm_unit.this_class.name.convert_to_string();
+        let class_name = jvm_unit.this_class.name;
 
         let parse_field = |f: &JvmUnitField| ClassField {
-            name: Arc::new(f.name.convert_to_string()),
+            name: f.name.clone(),
             value: f
                 .is_static
                 .then_some(())
@@ -92,7 +96,7 @@ impl JvmExecEnv {
 
         for field in jvm_unit.fields.iter() {
             if let JvmTypeDescriptor::Class(c) = &field.ty {
-                if c != &class_name {
+                if c != class_name.as_ref() {
                     self.required_units.insert(c.clone());
                 }
             }
@@ -105,7 +109,7 @@ impl JvmExecEnv {
                 .chain(once(descriptor.return_type.as_ref()).flatten())
             {
                 if let JvmTypeDescriptor::Class(c) = ty {
-                    if c != &class_name {
+                    if c != class_name.as_ref() {
                         if eager_loading {
                             self.required_units.insert(c.clone());
                         } else {
@@ -128,18 +132,18 @@ impl JvmExecEnv {
             .iter()
             .filter(|f| f.is_static)
             .map(parse_field)
-            .collect::<Vec<ClassField>>()
-            .into_boxed_slice();
+            .map(|f| (f.name.as_ref().clone(), f))
+            .collect::<HashMap<String, ClassField>>();
 
         let methods = jvm_unit
             .methods
             .iter()
             .cloned()
             .map(|m| {
-                let name = m.name.convert_to_string();
+                let name = m.name;
 
                 (
-                    name.clone(),
+                    name.as_ref().clone(),
                     if m.is_abstract {
                         Method::new_abstract(
                             m.descriptor.return_type,
@@ -177,22 +181,26 @@ impl JvmExecEnv {
                 self.partial_classes.push(PartialClass {
                     super_class: jvm_unit
                         .super_class
-                        .map(|s| Either::Left(s.name.convert_to_string())),
+                        .map(|s| Either::Left(s.name.as_ref().clone())),
                     name: class_name,
+                    constant_pool: ConstantPool::new(
+                        jvm_unit.loadable_constant_pool,
+                        jvm_unit.field_refs,
+                    ),
                     static_fields,
                     fields,
                     methods,
                     interfaces: jvm_unit
                         .interfaces
                         .into_iter()
-                        .map(|i| Either::Left(i.name.convert_to_string()))
+                        .map(|i| Either::Left(i.name))
                         .collect(),
                     is_abstract,
                 });
             }
             JvmUnitType::Interface(_) => {
                 self.interfaces.insert(
-                    class_name.clone(),
+                    class_name.as_ref().clone(),
                     Interface::new(class_name, static_fields),
                 );
             }
@@ -216,7 +224,8 @@ impl JvmExecEnv {
                 match content.try_complete(&self.classes, &self.interfaces) {
                     Either::Left(incomplete) => still_incomplete.push(incomplete),
                     Either::Right(complete) => {
-                        self.classes.insert(complete.name.clone(), complete.clone());
+                        self.classes
+                            .insert(complete.name.as_ref().clone(), complete.clone());
 
                         if idx == 0 && self.start_class.is_none() {
                             self.start_class = Some(complete);
@@ -237,7 +246,10 @@ impl JvmExecEnv {
         for missing in self.required_units.drain() {
             if !self.classes.contains_key(&missing)
                 && !self.interfaces.contains_key(&missing)
-                && !self.partial_classes.iter().any(|c| c.name == missing)
+                && !self
+                    .partial_classes
+                    .iter()
+                    .any(|c| c.name.as_ref() == &missing)
             {
                 still_missing.insert(missing);
             }
@@ -252,11 +264,12 @@ impl JvmExecEnv {
 #[derive(Debug)]
 pub struct PartialClass {
     super_class: Option<Either<String, Class>>,
-    name: String,
-    static_fields: Box<[ClassField]>,
+    name: Arc<String>,
+    constant_pool: ConstantPool,
+    static_fields: HashMap<String, ClassField>,
     fields: Box<[ClassField]>,
     methods: HashMap<String, Method>,
-    interfaces: Vec<Either<String, Interface>>,
+    interfaces: Vec<Either<Arc<String>, Interface>>,
     is_abstract: bool,
 }
 
@@ -292,7 +305,7 @@ impl PartialClass {
 
         for partial_interface in self.interfaces.iter_mut() {
             if let Either::Left(name) = partial_interface {
-                if let Some(found) = interfaces.get(name).cloned() {
+                if let Some(found) = interfaces.get(name.as_ref()).cloned() {
                     *partial_interface = Either::Right(found);
                 } else {
                     incomplete_interfaces += 1;
@@ -308,6 +321,7 @@ impl PartialClass {
                     .map(|i| i.unwrap_right())
                     .collect(),
                 self.name,
+                self.constant_pool,
                 self.static_fields,
                 self.fields,
                 self.methods,
