@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::Cursor, str::FromStr};
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Result, bail};
 use binrw::BinRead;
 use log::warn;
 use serde::Serialize;
@@ -47,12 +47,11 @@ impl JvmUnitMethod {
         loadable_constant_pool: &HashMap<u16, LoadableJvmConstant>,
     ) -> Result<Self> {
         let name = get_string(jvm_strings, &info.name_index)?;
-        let is_public = info.access_flags.contains(&MethodAccessFlags::AccPublic);
-        let is_private = info.access_flags.contains(&MethodAccessFlags::AccPrivate);
-        let is_protected = info.access_flags.contains(&MethodAccessFlags::AccProtected);
+        let is_public = info.access_flags.contains(&MethodAccessFlags::Public);
+        let is_private = info.access_flags.contains(&MethodAccessFlags::Private);
+        let is_protected = info.access_flags.contains(&MethodAccessFlags::Protected);
 
-        if (is_public && is_private) || (is_private && is_protected) || (is_protected && is_public)
-        {
+        if (is_protected || is_public) && is_private || (is_protected && is_public) {
             bail!("class has multiple visibility access flags");
         }
 
@@ -64,17 +63,15 @@ impl JvmUnitMethod {
             JvmVisibility::Public
         };
 
-        let is_static = info.access_flags.contains(&MethodAccessFlags::AccStatic);
-        let is_final = info.access_flags.contains(&MethodAccessFlags::AccFinal);
-        let is_synchronized = info
-            .access_flags
-            .contains(&MethodAccessFlags::AccSynchronized);
-        let is_bridge = info.access_flags.contains(&MethodAccessFlags::AccBridge);
-        let is_variadic = info.access_flags.contains(&MethodAccessFlags::AccVarargs);
-        let is_native = info.access_flags.contains(&MethodAccessFlags::AccNative);
-        let is_abstract = info.access_flags.contains(&MethodAccessFlags::AccAbstract);
-        let is_strict = info.access_flags.contains(&MethodAccessFlags::AccStrict);
-        let mut is_synthetic = info.access_flags.contains(&MethodAccessFlags::AccSynthetic);
+        let is_static = info.access_flags.contains(&MethodAccessFlags::Static);
+        let is_final = info.access_flags.contains(&MethodAccessFlags::Final);
+        let is_synchronized = info.access_flags.contains(&MethodAccessFlags::Synchronized);
+        let is_bridge = info.access_flags.contains(&MethodAccessFlags::Bridge);
+        let is_variadic = info.access_flags.contains(&MethodAccessFlags::Varargs);
+        let is_native = info.access_flags.contains(&MethodAccessFlags::Native);
+        let is_abstract = info.access_flags.contains(&MethodAccessFlags::Abstract);
+        let is_strict = info.access_flags.contains(&MethodAccessFlags::Strict);
+        let mut is_synthetic = info.access_flags.contains(&MethodAccessFlags::Synthetic);
 
         let ty = JvmMethodDescriptor::from_str(
             &get_string(jvm_strings, &info.descriptor_index)?.convert_to_string(),

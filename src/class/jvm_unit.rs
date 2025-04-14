@@ -393,31 +393,23 @@ impl JvmUnit {
             Some(get_class(&loadable_constant_pool, &class_file.super_class)?)
         };
 
-        let is_public = class_file
-            .access_flags
-            .contains(&ClassAccessFlags::AccPublic);
-        let is_final = class_file
-            .access_flags
-            .contains(&ClassAccessFlags::AccFinal);
-        let is_super = class_file
-            .access_flags
-            .contains(&ClassAccessFlags::AccSuper);
+        let is_public = class_file.access_flags.contains(&ClassAccessFlags::Public);
+        let is_final = class_file.access_flags.contains(&ClassAccessFlags::Final);
+        let is_super = class_file.access_flags.contains(&ClassAccessFlags::Super);
         let is_interface = class_file
             .access_flags
-            .contains(&ClassAccessFlags::AccInterface);
+            .contains(&ClassAccessFlags::Interface);
         let is_abstract = class_file
             .access_flags
-            .contains(&ClassAccessFlags::AccAbstract);
+            .contains(&ClassAccessFlags::Abstract);
         let mut is_synthetic = class_file
             .access_flags
-            .contains(&ClassAccessFlags::AccSynthetic);
+            .contains(&ClassAccessFlags::Synthetic);
         let is_annotation = class_file
             .access_flags
-            .contains(&ClassAccessFlags::AccAnnotation);
-        let is_enum = class_file.access_flags.contains(&ClassAccessFlags::AccEnum);
-        let is_module = class_file
-            .access_flags
-            .contains(&ClassAccessFlags::AccModule);
+            .contains(&ClassAccessFlags::Annotation);
+        let is_enum = class_file.access_flags.contains(&ClassAccessFlags::Enum);
+        let is_module = class_file.access_flags.contains(&ClassAccessFlags::Module);
 
         let mut unit_type = if is_interface {
             JvmUnitType::Interface(JvmInterface { is_annotation })

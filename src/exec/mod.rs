@@ -75,7 +75,7 @@ impl JvmExecEnv {
                 .is_static
                 .then_some(())
                 .and_then(|_| f.constant_value.clone())
-                .map(|cv| RuntimeType::from(cv))
+                .map(RuntimeType::from)
                 .unwrap_or(RuntimeType::default_of(&f.ty)),
             is_final: f.is_final,
         };
@@ -92,7 +92,7 @@ impl JvmExecEnv {
             for ty in descriptor
                 .parameter_types
                 .iter()
-                .chain(once(descriptor.return_type.as_ref()).filter_map(|v| v))
+                .chain(once(descriptor.return_type.as_ref()).flatten())
             {
                 if let JvmTypeDescriptor::Class(c) = ty {
                     if c != &class_name {

@@ -1,6 +1,5 @@
 use std::{
     collections::HashSet,
-    ffi::OsStr,
     fs::OpenOptions,
     io::{Cursor, Read},
     path::{Path, PathBuf},
@@ -59,7 +58,7 @@ impl ClassContainer {
     }
 
     pub fn has_unit(&self, unit_name: &str) -> bool {
-        self.units.contains(&unit_name.to_string())
+        self.units.contains(unit_name)
     }
 
     pub fn read_class_file(&self, unit_name: &str) -> anyhow::Result<Cursor<Vec<u8>>> {

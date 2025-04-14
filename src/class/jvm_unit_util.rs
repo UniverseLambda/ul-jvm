@@ -22,7 +22,7 @@ pub(super) fn get_string(
 }
 
 pub(super) fn get_name_and_type(
-    constant_pool: &Vec<ConstantPoolInfo>,
+    constant_pool: &[ConstantPoolInfo],
     idx: &u16,
 ) -> anyhow::Result<(u16, u16)> {
     let res = constant_pool

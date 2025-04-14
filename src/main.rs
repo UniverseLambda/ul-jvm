@@ -31,10 +31,11 @@ fn main() {
                 &[
                     ".".to_string(),
                     "/usr/lib/jvm/jre/jmods/java.base.jmod".to_string(),
+                    "/usr/lib/jvm/default-java/jmods/java.base.jmod".to_string(),
                 ],
                 false,
             )
-            .expect(&format!("unable to load class file {class}"));
+            .unwrap_or_else(|_| panic!("unable to load class file {class}"));
 
             done = jvm_exec_env.add_unit(jvm_unit);
         }
@@ -68,7 +69,7 @@ pub fn load_unit(full_name: &str, class_path: &[String], dump: bool) -> anyhow::
         let current_dir = Path::new(current_dir);
 
         // TODO: Handle when this is a dir
-        if current_dir.is_dir() {}
+        // current_dir.is_dir();
 
         let current_path = current_dir.join(full_name).with_extension("class");
 

@@ -79,7 +79,7 @@ fn is_slice_valid(slice: &[u8]) -> bool {
     let mut remaining_for_cp = 0usize;
     let mut supplementary = false;
 
-    for (i, b) in slice.into_iter().map(|b| *b).enumerate() {
+    for (i, b) in slice.iter().copied().enumerate() {
         if b >= 0xF0 || b == 0 {
             error!("Invalid byte at {i} (failed at `b >= 0xF0 || b == 0`)");
             return false;
@@ -108,11 +108,9 @@ fn is_slice_valid(slice: &[u8]) -> bool {
                     );
                     return false;
                 }
-            } else {
-                if b >> 6 != 0b10 {
-                    error!("Invalid extended byte at {i} (failed at `b >> 6 != 0b10`)");
-                    return false;
-                }
+            } else if b >> 6 != 0b10 {
+                error!("Invalid extended byte at {i} (failed at `b >> 6 != 0b10`)");
+                return false;
             }
 
             remaining_for_cp -= 1;

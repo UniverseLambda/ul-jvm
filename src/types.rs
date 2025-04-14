@@ -52,8 +52,8 @@ impl FromStr for JvmTypeDescriptor {
                 let class_name = &s[1..s.len() - 1];
 
                 match class_name {
-                    v if v.is_empty() => bail!("empty class name in type descriptor"),
-                    v if v.contains(&[';', '.', '[']) => bail!("forbidden character in class name"),
+                    "" => bail!("empty class name in type descriptor"),
+                    v if v.contains([';', '.', '[']) => bail!("forbidden character in class name"),
                     &_ => (),
                 }
 
@@ -75,7 +75,7 @@ impl FromStr for JvmMethodDescriptor {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            v if v.is_empty() => bail!("empty method descriptor"),
+            "" => bail!("empty method descriptor"),
             v if !v.starts_with('(') => bail!("method descriptor does not starts with '('"),
             v if !v.contains(')') => bail!("method descriptor does not contain a closing ')'"),
             &_ => (),

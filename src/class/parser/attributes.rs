@@ -266,16 +266,16 @@ pub struct InnerClassesEntry {
 #[derive(Debug, Clone, Copy, EnumIter)]
 #[repr(u16)]
 pub enum InnerClassAccessFlags {
-    AccPublic = 0x0001,     // 	Marked or implicitly public in source.
-    AccPrivate = 0x0002,    // 	Marked private in source.
-    AccProtected = 0x0004,  // 	Marked protected in source.
-    AccStatic = 0x0008,     // 	Marked or implicitly static in source.
-    AccFinal = 0x0010,      // 	Marked or implicitly final in source.
-    AccInterface = 0x0200,  // 	Was an interface in source.
-    AccAbstract = 0x0400,   // 	Marked or implicitly abstract in source.
-    AccSynthetic = 0x1000,  // 	Declared synthetic; not present in the source code.
-    AccAnnotation = 0x2000, // 	Declared as an annotation interface.
-    AccEnum = 0x4000,       // 	Declared as an enum class.
+    Public = 0x0001,     // 	Marked or implicitly public in source.
+    Private = 0x0002,    // 	Marked private in source.
+    Protected = 0x0004,  // 	Marked protected in source.
+    Static = 0x0008,     // 	Marked or implicitly static in source.
+    Final = 0x0010,      // 	Marked or implicitly final in source.
+    Interface = 0x0200,  // 	Was an interface in source.
+    Abstract = 0x0400,   // 	Marked or implicitly abstract in source.
+    Synthetic = 0x1000,  // 	Declared synthetic; not present in the source code.
+    Annotation = 0x2000, // 	Declared as an annotation interface.
+    Enum = 0x4000,       // 	Declared as an enum class.
 }
 
 impl InnerClassAccessFlags {

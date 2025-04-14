@@ -38,12 +38,11 @@ impl JvmUnitField {
         loadable_constant_pool: &HashMap<u16, LoadableJvmConstant>,
     ) -> Result<Self> {
         let name = get_string(jvm_strings, &info.name_index)?;
-        let is_public = info.access_flags.contains(&FieldAccessFlags::AccPublic);
-        let is_private = info.access_flags.contains(&FieldAccessFlags::AccPrivate);
-        let is_protected = info.access_flags.contains(&FieldAccessFlags::AccProtected);
+        let is_public = info.access_flags.contains(&FieldAccessFlags::Public);
+        let is_private = info.access_flags.contains(&FieldAccessFlags::Private);
+        let is_protected = info.access_flags.contains(&FieldAccessFlags::Protected);
 
-        if (is_public && is_private) || (is_private && is_protected) || (is_protected && is_public)
-        {
+        if (is_protected || is_public) && is_private || (is_protected && is_public) {
             bail!("class has multiple visibility access flags");
         }
 
@@ -55,12 +54,12 @@ impl JvmUnitField {
             JvmVisibility::Public
         };
 
-        let is_static = info.access_flags.contains(&FieldAccessFlags::AccStatic);
-        let is_final = info.access_flags.contains(&FieldAccessFlags::AccFinal);
-        let is_volatile = info.access_flags.contains(&FieldAccessFlags::AccVolatile);
-        let is_transient = info.access_flags.contains(&FieldAccessFlags::AccTransient);
-        let mut is_synthetic = info.access_flags.contains(&FieldAccessFlags::AccSynthetic);
-        let is_enum = info.access_flags.contains(&FieldAccessFlags::AccEnum);
+        let is_static = info.access_flags.contains(&FieldAccessFlags::Static);
+        let is_final = info.access_flags.contains(&FieldAccessFlags::Final);
+        let is_volatile = info.access_flags.contains(&FieldAccessFlags::Volatile);
+        let is_transient = info.access_flags.contains(&FieldAccessFlags::Transient);
+        let mut is_synthetic = info.access_flags.contains(&FieldAccessFlags::Synthetic);
+        let is_enum = info.access_flags.contains(&FieldAccessFlags::Enum);
 
         let ty = JvmTypeDescriptor::from_str(
             &get_string(jvm_strings, &info.descriptor_index)?.convert_to_string(),
@@ -91,7 +90,7 @@ impl JvmUnitField {
                     ))?;
 
                     let res =
-                        get_loadable_constant(&loadable_constant_pool, &cv.constantvalue_index)?;
+                        get_loadable_constant(loadable_constant_pool, &cv.constantvalue_index)?;
 
                     constant_value = Some(res);
                 }
