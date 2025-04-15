@@ -5,7 +5,7 @@ use binrw::BinRead;
 use class::{JvmUnit, parser::ClassFile};
 use class_container::read_container;
 use either::Either;
-use exec::JvmExecEnv;
+use exec::{JvmExecEnv, thread::JvmThread};
 use log::{debug, info, warn};
 use types::JvmTypeDescriptor;
 
@@ -41,17 +41,30 @@ fn main() {
         }
     }
 
-    let start_class = jvm_exec_env.start_class.expect("no start class found");
+    let start_class = jvm_exec_env
+        .start_class
+        .as_ref()
+        .expect("no start class found");
 
-    let main_method = start_class.methods.iter().find(|(name, method)| {
-        *name == "main"
-            && method.ret_type().is_none()
-            && method.is_static()
-            && method.parameters()
-                == &[JvmTypeDescriptor::Array(Box::new(
-                    JvmTypeDescriptor::Class("java/lang/String".into()),
-                ))]
-    });
+    let (_, main_method) = start_class
+        .methods
+        .iter()
+        .find(|(name, method)| {
+            *name == "main"
+                && method.ret_type().is_none()
+                && method.is_static()
+                && method.parameters()
+                    == &[JvmTypeDescriptor::Array(Box::new(
+                        JvmTypeDescriptor::Class("java/lang/String".into()),
+                    ))]
+        })
+        .expect("no main method in the specified class");
+
+    let mut main_thread = JvmThread::new(start_class.clone(), main_method);
+
+    main_thread
+        .run(&jvm_exec_env)
+        .expect("could not run main thread");
 }
 
 pub fn load_unit(full_name: &str, class_path: &[String], dump: bool) -> anyhow::Result<JvmUnit> {

@@ -27,7 +27,7 @@ impl<'a> JvmProcessUnit<'a> {
             .resolve_class(&field_ref.class.name)
             .context("getstatic")?;
 
-        if !self.skip_static_init && target_class.name == thread.current_frame()?.current_class.name
+        if !self.skip_static_init || target_class.name != thread.current_frame()?.current_class.name
         {
             self.init_static(thread, &target_class)?;
         }

@@ -55,7 +55,7 @@ impl JvmThread {
 
                     jpu.getstatic(self, short)?
                 }
-                v => bail!("unknown opcode at {}: {v}", (self.pc - 1)),
+                v => bail!("unknown opcode at 0x{:08X}: 0x{v:02X}", (self.pc - 1)),
             }
         }
 
