@@ -5,7 +5,15 @@ use crate::types::JvmTypeDescriptor;
 use super::{heap::ObjectRef, runtime_type::RuntimeType};
 
 #[derive(Debug, Clone)]
-pub enum Method {
+pub struct Method {
+    return_type: Option<JvmTypeDescriptor>,
+    parameters: Vec<JvmTypeDescriptor>,
+    name: Arc<String>,
+    spec: MethodSpec,
+}
+
+#[derive(Debug, Clone)]
+pub enum MethodSpec {
     Normal(NormalMethod),
     Abstract(AbstractMethod),
     Native(NativeMethod),
@@ -21,29 +29,30 @@ impl Method {
         cp_end: usize,
         local_count: usize,
     ) -> Self {
-        Self::Normal(NormalMethod {
+        Self {
             return_type,
             parameters,
             name,
-            is_static,
-            cp_start,
-            cp_end,
-            local_count,
-        })
+            spec: MethodSpec::Normal(NormalMethod {
+                is_static,
+                cp_start,
+                cp_end,
+                local_count,
+            }),
+        }
     }
 
     pub fn new_abstract(
         return_type: Option<JvmTypeDescriptor>,
         parameters: Vec<JvmTypeDescriptor>,
         name: Arc<String>,
-        is_static: bool,
     ) -> Self {
-        Self::Abstract(AbstractMethod {
+        Self {
             return_type,
             parameters,
             name,
-            is_static,
-        })
+            spec: MethodSpec::Abstract(AbstractMethod {}),
+        }
     }
 
     pub fn new_native(
@@ -52,55 +61,47 @@ impl Method {
         name: Arc<String>,
         is_static: bool,
     ) -> Self {
-        Self::Native(NativeMethod {
+        Self {
             return_type,
             parameters,
             name,
-            is_static,
-        })
+            spec: MethodSpec::Native(NativeMethod { is_static }),
+        }
     }
 
     pub fn is_static(&self) -> bool {
-        match self {
-            Method::Normal(method) => method.is_static,
-            Method::Abstract(method) => method.is_static,
-            Method::Native(method) => method.is_static,
+        match &self.spec {
+            MethodSpec::Normal(method) => method.is_static,
+            MethodSpec::Native(method) => method.is_static,
+            MethodSpec::Abstract(_) => false,
         }
     }
 
     pub fn is_native(&self) -> bool {
-        match self {
-            Method::Native(_) => true,
+        match self.spec {
+            MethodSpec::Native(_) => true,
             _ => false,
         }
     }
 
     pub fn parameters(&self) -> &[JvmTypeDescriptor] {
-        match self {
-            Method::Normal(m) => &m.parameters,
-            Method::Abstract(m) => &m.parameters,
-            Method::Native(m) => &m.parameters,
-        }
+        &self.parameters
     }
 
     pub fn ret_type(&self) -> &Option<JvmTypeDescriptor> {
-        match self {
-            Method::Normal(m) => &m.return_type,
-            Method::Abstract(m) => &m.return_type,
-            Method::Native(m) => &m.return_type,
-        }
+        &self.return_type
     }
 
     pub fn start_pc(&self) -> Option<usize> {
-        match self {
-            Method::Normal(normal_method) => Some(normal_method.cp_start),
+        match &self.spec {
+            MethodSpec::Normal(normal_method) => Some(normal_method.cp_start),
             _ => None,
         }
     }
 
     pub fn local_count(&self) -> usize {
-        match self {
-            Method::Normal(m) => m.local_count,
+        match &self.spec {
+            MethodSpec::Normal(m) => m.local_count,
             _ => 0,
         }
     }
@@ -108,9 +109,6 @@ impl Method {
 
 #[derive(Debug, Clone)]
 pub struct NormalMethod {
-    return_type: Option<JvmTypeDescriptor>,
-    parameters: Vec<JvmTypeDescriptor>,
-    name: Arc<String>,
     is_static: bool,
     cp_start: usize,
     cp_end: usize,
@@ -118,18 +116,10 @@ pub struct NormalMethod {
 }
 
 #[derive(Debug, Clone)]
-pub struct AbstractMethod {
-    return_type: Option<JvmTypeDescriptor>,
-    parameters: Vec<JvmTypeDescriptor>,
-    name: Arc<String>,
-    is_static: bool,
-}
+pub struct AbstractMethod {}
 
 #[derive(Debug, Clone)]
 pub struct NativeMethod {
-    return_type: Option<JvmTypeDescriptor>,
-    parameters: Vec<JvmTypeDescriptor>,
-    name: Arc<String>,
     is_static: bool,
 }
 

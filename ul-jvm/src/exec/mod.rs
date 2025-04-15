@@ -175,12 +175,7 @@ impl JvmExecEnv {
             let entry = methods.entry(name.as_ref().clone()).or_default();
 
             entry.push(if m.is_abstract {
-                Method::new_abstract(
-                    m.descriptor.return_type,
-                    m.descriptor.parameter_types,
-                    name,
-                    m.is_static,
-                )
+                Method::new_abstract(m.descriptor.return_type, m.descriptor.parameter_types, name)
             } else if m.is_native {
                 Method::new_native(
                     m.descriptor.return_type,
