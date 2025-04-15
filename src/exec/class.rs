@@ -10,7 +10,9 @@ use std::{
 use anyhow::{anyhow, bail};
 use parking_lot::{Mutex, ReentrantMutex, RwLock};
 
-use crate::class::constant_pool::{ConstantFieldref, LoadableJvmConstant};
+use crate::class::constant_pool::{
+    ConstantDouble, ConstantFieldref, ConstantLong, LoadableJvmConstant,
+};
 
 use super::{interface::Interface, method::Method, runtime_type::RuntimeType};
 
@@ -147,6 +149,26 @@ impl ConstantPool {
 
     pub fn get_field_ref(&self, cp_index: u16) -> Option<ConstantFieldref> {
         self.fieldrefs.get(&cp_index).cloned()
+    }
+
+    pub fn get_long(&self, cp_index: u16) -> Option<ConstantLong> {
+        self.loadables.get(&cp_index).cloned().and_then(|v| {
+            if let LoadableJvmConstant::Long(v) = v {
+                Some(v)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn get_double(&self, cp_index: u16) -> Option<ConstantDouble> {
+        self.loadables.get(&cp_index).cloned().and_then(|v| {
+            if let LoadableJvmConstant::Double(v) = v {
+                Some(v)
+            } else {
+                None
+            }
+        })
     }
 }
 
