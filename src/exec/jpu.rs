@@ -219,8 +219,8 @@ impl<'a> JvmProcessUnit<'a> {
     - lreturn:              TODO
     - lshl:                 TODO
     - lshr:                 TODO
-    - lstore:               TODO
-    - lstore_<n>:           TODO
+    - lstore:               TO TEST
+    - lstore_<n>:           TO TEST
     - lsub:                 TODO
     - lushr:                TODO
     - lxor:                 TODO

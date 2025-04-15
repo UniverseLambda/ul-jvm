@@ -199,11 +199,11 @@ impl JvmThread {
             writeln!(writer, "  return PC: {}", frame.return_pc)?;
             writeln!(writer, "  OS:")?;
             for (idx, elem) in frame.operand_stack.iter().enumerate().rev() {
-                writeln!(writer, "  - [{idx}] {elem:?}")?;
+                writeln!(writer, "  - [{idx}]      {elem:?}")?;
             }
             writeln!(writer, "  locals:")?;
             for (idx, elem) in frame.locals.iter().enumerate() {
-                writeln!(writer, "  - [{idx}] {elem:?}")?;
+                writeln!(writer, "  - [{idx}]      {elem:?}")?;
             }
         }
 
