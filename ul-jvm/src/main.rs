@@ -20,7 +20,8 @@ fn main() {
     info!("uLambda's JVM version {}", env!("CARGO_PKG_VERSION"));
     let mut jvm_exec_env = JvmExecEnv::new();
 
-    let first_unit = load_unit("Main", &[".".to_string()], true).expect("loading Main.class");
+    let first_unit =
+        load_unit("Main", &["test-classes".to_string()], true).expect("loading Main.class");
 
     let mut done = jvm_exec_env.add_unit(first_unit, true);
 
