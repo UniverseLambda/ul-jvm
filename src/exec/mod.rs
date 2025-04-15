@@ -16,6 +16,7 @@ use thread::JvmThread;
 use crate::{
     class::{
         JvmClass, JvmUnit, JvmUnitField, JvmUnitMethod, JvmUnitType,
+        constant_pool::{ConstantMethodHandle, LoadableJvmConstant},
     },
     types::JvmTypeDescriptor,
 };
@@ -114,6 +115,39 @@ impl JvmExecEnv {
                         } else {
                             self.differed_units.insert(c.clone());
                         }
+                    }
+                }
+            }
+        }
+
+        for constant in &jvm_unit.loadable_constant_pool {
+            let v = match constant.1 {
+                LoadableJvmConstant::Class(c) => Some(c.name.clone()),
+                LoadableJvmConstant::MethodHandle(
+                    ConstantMethodHandle::GetField(f)
+                    | ConstantMethodHandle::GetStatic(f)
+                    | ConstantMethodHandle::PutField(f)
+                    | ConstantMethodHandle::PutStatic(f),
+                ) => Some(f.class.name.clone()),
+                LoadableJvmConstant::MethodHandle(
+                    ConstantMethodHandle::NewInvokeSpecial(i)
+                    | ConstantMethodHandle::InvokeVirtual(i)
+                    | ConstantMethodHandle::InvokeSpecial(Either::Left(i))
+                    | ConstantMethodHandle::InvokeStatic(Either::Left(i)),
+                ) => Some(i.class.name.clone()),
+                LoadableJvmConstant::MethodHandle(
+                    ConstantMethodHandle::InvokeSpecial(Either::Right(i))
+                    | ConstantMethodHandle::InvokeStatic(Either::Right(i)),
+                ) => Some(i.class.name.clone()),
+                _ => None,
+            };
+
+            if let Some(c) = v {
+                if c != class_name {
+                    if eager_loading {
+                        self.required_units.insert(c.as_ref().clone());
+                    } else {
+                        self.differed_units.insert(c.as_ref().clone());
                     }
                 }
             }

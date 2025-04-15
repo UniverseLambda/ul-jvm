@@ -165,7 +165,7 @@ impl<'a> JvmProcessUnit<'a> {
     - fstore_<n>:           TODO
     - fsub:                 TODO
     - getfield:             TODO
-    - getstatic:            TO TEST
+    - getstatic:            COMPLETED
     - goto:                 TODO
     - goto_w:               TODO
     - i2b:                  TODO
