@@ -118,6 +118,21 @@ impl<'a> JvmProcessUnit<'a> {
         Ok(())
     }
 
+    pub fn lload(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
+        trace!("lload");
+
+        let local_index = local_index as usize;
+        let value = thread.read_local(local_index)?;
+        // TODO: check to see if local_index + 1 is forbidden
+
+        match value {
+            RuntimeType::Long(_) => (),
+            v => bail!("unexpected value (long expected): {v:?}"),
+        }
+
+        thread.push_operand_stack(value)
+    }
+
     pub fn lstore(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
         trace!("lstore");
 
@@ -270,8 +285,8 @@ impl<'a> JvmProcessUnit<'a> {
     - ldc_w:                TODO
     - ldc2_w:               INCOMPLETE
     - ldiv:                 TODO
-    - lload:                TODO
-    - lload_<n>:            TODO
+    - lload:                COMPLETED
+    - lload_<n>:            COMPLETED
     - lmul:                 TODO
     - lneg:                 TODO
     - lookupswitch:         TODO

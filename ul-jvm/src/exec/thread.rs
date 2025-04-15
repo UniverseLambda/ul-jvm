@@ -137,6 +137,13 @@ impl JvmThread {
                     let short = self.pop_short(env)?;
                     jpu.ld2c_w(self, short)?;
                 }
+                0x16 => {
+                    let local_index = self.pop_byte(env)?;
+                    jpu.lload(self, local_index)?;
+                }
+                v @ 0x1e | v @ 0x1f | v @ 0x20 | v @ 0x21 => {
+                    jpu.lload(self, v - 0x1e)?;
+                }
                 0x37 => {
                     let local_index = self.pop_byte(env)?;
                     jpu.lstore(self, local_index)?;
