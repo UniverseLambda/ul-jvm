@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::io::Cursor;
+use std::mem::swap;
 use std::str::FromStr;
 
 use anyhow::{Result, anyhow, bail};
@@ -92,22 +93,31 @@ impl JvmUnit {
         let mut dynamic_invokes: HashMap<u16, DynamicInvoke> = HashMap::new(); // OK
         let mut interface_method_refs: HashMap<u16, ConstantInterfaceMethodref> = HashMap::new(); // OK
         let mut loadable_constant_pool: HashMap<u16, LoadableJvmConstant> = HashMap::new(); // OK
+        let mut name_and_types: HashMap<u16, (u16, u16)> = HashMap::new();
 
-        debug!("CONSTANT POOL - PASS 0");
+        debug!(
+            "CONSTANT POOL - PASS 0 ({} to treat)",
+            class_file.constant_pool.len()
+        );
 
-        for (idx, constant) in class_file
+        let mut processing = vec![];
+        let mut indexed_constant_pool = class_file
             .constant_pool
-            .iter()
+            .into_iter()
             .enumerate()
-            .map(|(idx, c)| (idx as u16, c))
-        {
+            .map(|(idx, v)| (idx as u16, v))
+            .collect();
+
+        swap(&mut processing, &mut indexed_constant_pool);
+
+        for (idx, constant) in processing.drain(..) {
+            trace!("- [{idx}] {}", <&'static str>::from(&constant));
             match constant {
                 ConstantPoolInfo::Utf8 { bytes, .. } => {
-                    jvm_strings
-                        .insert(idx, ConstantJvmUtf8::new(bytes.clone().convert_to_string()));
+                    jvm_strings.insert(idx, ConstantJvmUtf8::new(bytes.convert_to_string()));
                 }
                 ConstantPoolInfo::Integer { bytes } => {
-                    loadable_constant_pool.insert(idx, LoadableJvmConstant::Integer(*bytes));
+                    loadable_constant_pool.insert(idx, LoadableJvmConstant::Integer(bytes));
                 }
                 ConstantPoolInfo::Long {
                     high_bytes,
@@ -116,12 +126,12 @@ impl JvmUnit {
                     loadable_constant_pool.insert(
                         idx,
                         LoadableJvmConstant::Long(
-                            (((*high_bytes as u64) << 32) | (*low_bytes as u64)) as i64,
+                            (((high_bytes as u64) << 32) | (low_bytes as u64)) as i64,
                         ),
                     );
                 }
                 ConstantPoolInfo::Float { bytes } => {
-                    loadable_constant_pool.insert(idx, LoadableJvmConstant::Float(*bytes));
+                    loadable_constant_pool.insert(idx, LoadableJvmConstant::Float(bytes));
                 }
                 ConstantPoolInfo::Double {
                     high_bytes,
@@ -130,43 +140,48 @@ impl JvmUnit {
                     loadable_constant_pool.insert(
                         idx,
                         LoadableJvmConstant::Double(f64::from_bits(
-                            ((*high_bytes as u64) << 32) | (*low_bytes as u64),
+                            ((high_bytes as u64) << 32) | (low_bytes as u64),
                         )),
                     );
                 }
-                _ => (),
+                ConstantPoolInfo::NameAndType {
+                    name_index,
+                    descriptor_index,
+                } => {
+                    name_and_types.insert(idx, (name_index, descriptor_index));
+                }
+                v => indexed_constant_pool.push((idx, v)),
             }
         }
 
         trace!("- jvm_strings: {jvm_strings:#?}");
         trace!("- loadable_constant_pool: {loadable_constant_pool:#?}");
-        debug!("CONSTANT POOL - PASS 1");
+        debug!("CONSTANT POOL - PASS 1",);
 
-        for (idx, constant) in class_file
-            .constant_pool
-            .iter()
-            .enumerate()
-            .map(|(idx, c)| (idx as u16, c))
-        {
+        swap(&mut processing, &mut indexed_constant_pool);
+
+        for (idx, constant) in processing.drain(..).into_iter() {
+            trace!("- [{idx}] {}", <&'static str>::from(&constant));
+
             match constant {
                 ConstantPoolInfo::String { string_index } => {
                     loadable_constant_pool.insert(
                         idx,
-                        LoadableJvmConstant::String(get_string(&jvm_strings, string_index)?),
+                        LoadableJvmConstant::String(get_string(&jvm_strings, &string_index)?),
                     );
                 }
                 ConstantPoolInfo::Class { name_index } => {
                     loadable_constant_pool.insert(
                         idx,
                         LoadableJvmConstant::Class(ConstantClass {
-                            name: get_string(&jvm_strings, name_index)?,
+                            name: get_string(&jvm_strings, &name_index)?,
                         }),
                     );
                 }
                 ConstantPoolInfo::MethodType { descriptor_index } => {
                     let descriptor = JvmMethodDescriptor::from_str(&get_string(
                         &jvm_strings,
-                        descriptor_index,
+                        &descriptor_index,
                     )?)?;
 
                     loadable_constant_pool
@@ -177,7 +192,7 @@ impl JvmUnit {
                     name_and_type_index,
                 } => {
                     let (name_idx, descriptor_idx) =
-                        get_name_and_type(&class_file.constant_pool, name_and_type_index)?;
+                        get_name_and_type(&name_and_types, &name_and_type_index)?;
 
                     let name = get_string(&jvm_strings, &name_idx)?;
                     let descriptor =
@@ -186,7 +201,7 @@ impl JvmUnit {
                     loadable_constant_pool.insert(
                         idx,
                         LoadableJvmConstant::Dynamic {
-                            bootstrap_method_attr_index: *bootstrap_method_attr_index,
+                            bootstrap_method_attr_index,
                             name,
                             ty: descriptor,
                         },
@@ -197,7 +212,7 @@ impl JvmUnit {
                     name_and_type_index,
                 } => {
                     let (name_idx, descriptor_idx) =
-                        get_name_and_type(&class_file.constant_pool, name_and_type_index)?;
+                        get_name_and_type(&name_and_types, &name_and_type_index)?;
 
                     let name = get_string(&jvm_strings, &name_idx)?;
                     let descriptor =
@@ -206,13 +221,13 @@ impl JvmUnit {
                     dynamic_invokes.insert(
                         idx,
                         DynamicInvoke {
-                            bootstrap_method_attr_index: *bootstrap_method_attr_index,
+                            bootstrap_method_attr_index,
                             name,
                             ty: descriptor,
                         },
                     );
                 }
-                _ => (),
+                v => indexed_constant_pool.push((idx, v)),
             }
         }
 
@@ -220,20 +235,19 @@ impl JvmUnit {
         trace!("- dynamic_invokes: {dynamic_invokes:#?}");
         debug!("CONSTANT POOL - PASS 2");
 
-        for (idx, constant) in class_file
-            .constant_pool
-            .iter()
-            .enumerate()
-            .map(|(idx, c)| (idx as u16, c))
-        {
+        swap(&mut processing, &mut indexed_constant_pool);
+
+        for (idx, constant) in processing.drain(..) {
+            trace!("- [{idx}] {}", <&'static str>::from(&constant));
+
             match constant {
                 ConstantPoolInfo::Fieldref {
                     class_index,
                     name_and_type_index,
                 } => {
-                    let class = get_class(&loadable_constant_pool, class_index)?;
+                    let class = get_class(&loadable_constant_pool, &class_index)?;
                     let (name_idx, descriptor_idx) =
-                        get_name_and_type(&class_file.constant_pool, name_and_type_index)?;
+                        get_name_and_type(&name_and_types, &name_and_type_index)?;
 
                     let name = get_string(&jvm_strings, &name_idx)?;
                     let descriptor =
@@ -256,9 +270,9 @@ impl JvmUnit {
                     class_index,
                     name_and_type_index,
                 } => {
-                    let class = get_class(&loadable_constant_pool, class_index)?;
+                    let class = get_class(&loadable_constant_pool, &class_index)?;
                     let (name_idx, descriptor_idx) =
-                        get_name_and_type(&class_file.constant_pool, name_and_type_index)?;
+                        get_name_and_type(&name_and_types, &name_and_type_index)?;
 
                     let name = get_string(&jvm_strings, &name_idx)?;
                     let descriptor =
@@ -288,7 +302,7 @@ impl JvmUnit {
                         _ => unreachable!(),
                     }
                 }
-                _ => (),
+                v => indexed_constant_pool.push((idx, v)),
             }
         }
 
@@ -298,12 +312,9 @@ impl JvmUnit {
 
         debug!("CONSTANT POOL - PASS 3");
 
-        for (idx, constant) in class_file
-            .constant_pool
-            .iter()
-            .enumerate()
-            .map(|(idx, c)| (idx as u16, c))
-        {
+        for (idx, constant) in indexed_constant_pool.drain(..) {
+            trace!("- [{idx}] {}", <&'static str>::from(&constant));
+
             if let ConstantPoolInfo::MethodHandle {
                 reference_kind,
                 reference_index,
@@ -315,7 +326,7 @@ impl JvmUnit {
                     | v @ MethodKind::PutField
                     | v @ MethodKind::PutStatic => {
                         let field_ref = field_refs
-                            .get(reference_index)
+                            .get(&reference_index)
                             .ok_or_else(|| {
                                 anyhow!("no FieldRef found at {reference_index} in constant pool (for {v:#?})")
                             })?
@@ -331,7 +342,7 @@ impl JvmUnit {
                     }
                     v @ MethodKind::InvokeVirtual | v @ MethodKind::NewInvokeSpecial => {
                         let method_ref = method_refs
-                            .get(reference_index)
+                            .get(&reference_index)
                             .ok_or_else(|| {
                                 anyhow!("no MethodRef found at {reference_index} in constant pool")
                             })?
@@ -348,9 +359,9 @@ impl JvmUnit {
                         }
                     }
                     v @ MethodKind::InvokeStatic | v @ MethodKind::InvokeSpecial => {
-                        let method_ref = method_refs.get(reference_index).cloned();
+                        let method_ref = method_refs.get(&reference_index).cloned();
                         let interface_method_ref =
-                            interface_method_refs.get(reference_index).cloned();
+                            interface_method_refs.get(&reference_index).cloned();
 
                         let res = if let Some(zarma) = method_ref {
                             Either::Left(zarma)
@@ -370,7 +381,7 @@ impl JvmUnit {
                     }
                     MethodKind::InvokeInterface => {
                         let interface_method_ref = interface_method_refs
-                            .get(reference_index)
+                            .get(&reference_index)
                             .cloned()
                             .ok_or_else(|| {
                                 anyhow!("no InterfaceMethodRef found at {reference_index} in constant pool")

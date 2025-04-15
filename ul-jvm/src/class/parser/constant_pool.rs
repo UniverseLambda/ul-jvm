@@ -23,7 +23,7 @@ pub(super) fn parse_constant_pool(constant_pool_count: u16) -> BinResult<Vec<Con
     Ok(result)
 }
 
-#[derive(Debug, Clone, BinRead, Serialize)]
+#[derive(Debug, Clone, BinRead, Serialize, strum::IntoStaticStr)]
 pub enum ConstantPoolInfo {
     #[br(magic = 0u8)]
     Ignored,

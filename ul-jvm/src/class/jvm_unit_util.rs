@@ -22,25 +22,13 @@ pub(super) fn get_string(
 }
 
 pub(super) fn get_name_and_type(
-    constant_pool: &[ConstantPoolInfo],
+    name_and_types: &HashMap<u16, (u16, u16)>,
     idx: &u16,
 ) -> anyhow::Result<(u16, u16)> {
-    let res = constant_pool
-        .get(*idx as usize)
-        .ok_or_else(|| anyhow!("no NameAndType in constant pool at {idx}"))?
-        .clone();
-
-    let ConstantPoolInfo::NameAndType {
-        name_index,
-        descriptor_index,
-    } = res
-    else {
-        bail!(
-            "tried to access NameAndType at {idx} in constant pool, but something else was found"
-        );
-    };
-
-    Ok((name_index, descriptor_index))
+    name_and_types
+        .get(idx)
+        .cloned()
+        .ok_or_else(|| anyhow!("no NameAndType in constant pool at {idx}"))
 }
 
 pub(super) fn get_class(

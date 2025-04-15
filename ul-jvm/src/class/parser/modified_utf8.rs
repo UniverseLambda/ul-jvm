@@ -1,5 +1,5 @@
 use binrw::BinRead;
-use log::error;
+use log::{error, trace};
 use serde::Serialize;
 
 // TODO: implement decoder
@@ -11,17 +11,18 @@ pub struct ModifiedUtf8String(
 
 impl ModifiedUtf8String {
     pub fn convert_to_string(&self) -> String {
+        trace!("bytes to convert: {} bytes", self.0.len());
+
         let mut slice = self.0.as_slice();
 
         let mut normalized_utf8 = Vec::with_capacity(self.0.len());
 
         while !slice.is_empty() {
             let b = slice[0];
-
             if (b & 0x80) == 0x00 {
                 normalized_utf8.push(b);
                 slice = &slice[1..];
-            } else if b >> 3 == 0b110 {
+            } else if b >> 5 == 0b110 {
                 if b == 0b11000000 && slice[1] == 0b11000000 {
                     normalized_utf8.push(0);
                 } else {
