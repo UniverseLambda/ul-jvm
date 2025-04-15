@@ -50,7 +50,7 @@ fn main() {
 
     let main_method = start_class
         .methods
-        .get(&"main".to_string())
+        .get("main")
         .and_then(|methods| {
             methods.iter().find(|method| {
                 method.ret_type().is_none()

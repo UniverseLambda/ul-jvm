@@ -78,6 +78,7 @@ impl Method {
     }
 
     pub fn is_native(&self) -> bool {
+        matches!(self.spec, MethodSpec::Native(_));
         match self.spec {
             MethodSpec::Native(_) => true,
             _ => false,
