@@ -60,7 +60,6 @@ impl<'a> JvmProcessUnit<'a> {
         let current_class: Class = thread.current_frame()?.current_class.clone();
 
         // TODO: handle synchronized
-        // TODO: handle interface methods
         let (target_class, name, ty) = current_class
             .constant_pool
             .get_method_ref(cp_index)
@@ -72,6 +71,11 @@ impl<'a> JvmProcessUnit<'a> {
                     .map(|m| (m.class, m.name, m.ty))
             })
             .ok_or_else(|| anyhow!("no methodref at {cp_index}"))?;
+
+        trace!(
+            "invokestatic, calling {}:{name} ({ty:?})",
+            target_class.name
+        );
 
         let target_class = self.resolve_class(&target_class.name)?;
         let method = target_class.get_method(&name, ty.clone()).ok_or_else(|| {
@@ -239,7 +243,7 @@ impl<'a> JvmProcessUnit<'a> {
     - invokedynamic:        TODO
     - invokeinterface:      TODO
     - invokespecial:        TODO
-    - invokestatic:         TO TEST
+    - invokestatic:         PARTIAL
     - invokevirtual:        TODO
     - ior:                  TODO
     - irem:                 TODO
