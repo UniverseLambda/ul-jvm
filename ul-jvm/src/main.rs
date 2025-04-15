@@ -72,7 +72,7 @@ fn main() {
 
         main_thread.dump_to(stdout()).unwrap();
 
-        Err(err).expect("error on main thread")
+        panic!("{1}: {:?}", err, "error on main thread")
     };
 }
 

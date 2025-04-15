@@ -160,7 +160,7 @@ impl JvmUnit {
 
         swap(&mut processing, &mut indexed_constant_pool);
 
-        for (idx, constant) in processing.drain(..).into_iter() {
+        for (idx, constant) in processing.drain(..) {
             trace!("- [{idx}] {}", <&'static str>::from(&constant));
 
             match constant {

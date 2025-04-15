@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
 use ul_jni::{
-    api::{FfiStr, JNI_VERSION_24, JniInterfaceFunctions},
+    api::{JNI_VERSION_24, JniInterfaceFunctions},
     ptr::JniPtr,
     types::JniInt,
 };

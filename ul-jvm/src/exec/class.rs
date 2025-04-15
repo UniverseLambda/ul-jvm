@@ -168,11 +168,11 @@ impl ObjectBacking for Class {
 
                 let instance = class.instanciate_uninit();
 
-                let obj_ref = env.heap.store_object(instance);
+                
 
                 // TODO: obj ctor call
 
-                obj_ref
+                env.heap.store_object(instance)
             })
             .new_ref()
     }

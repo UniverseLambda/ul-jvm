@@ -2,10 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, bail};
 
-use super::{
-    constant_pool::{ConstantClass, ConstantJvmUtf8, LoadableJvmConstant},
-    parser::ConstantPoolInfo,
-};
+use super::constant_pool::{ConstantClass, ConstantJvmUtf8, LoadableJvmConstant};
 
 pub(super) fn get_string_opt(
     jvm_strings: &HashMap<u16, ConstantJvmUtf8>,
