@@ -72,11 +72,6 @@ impl<'a> JvmProcessUnit<'a> {
             })
             .ok_or_else(|| anyhow!("no methodref at {cp_index}"))?;
 
-        trace!(
-            "invokestatic, calling {}:{name} ({ty:?})",
-            target_class.name
-        );
-
         let target_class = self.resolve_class(&target_class.name)?;
         let method = target_class.get_method(&name, ty.clone()).ok_or_else(|| {
             anyhow!(
@@ -87,6 +82,11 @@ impl<'a> JvmProcessUnit<'a> {
 
         self.init_static(thread, &target_class)?;
 
+        trace!(
+            "invokestatic, calling {}:{name} ({ty:?}) (native: {})",
+            target_class.name,
+            method.is_native()
+        );
         thread.jmp_jvm_method(target_class.clone(), method);
 
         Ok(())

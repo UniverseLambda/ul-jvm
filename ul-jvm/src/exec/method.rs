@@ -68,6 +68,13 @@ impl Method {
         }
     }
 
+    pub fn is_native(&self) -> bool {
+        match self {
+            Method::Native(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn parameters(&self) -> &[JvmTypeDescriptor] {
         match self {
             Method::Normal(m) => &m.parameters,

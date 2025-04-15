@@ -1,18 +1,9 @@
-[package]
-name = "ul-jvm"
-version = "0.1.0"
-edition = "2024"
-license = "GPL-3.0-or-later"
+[workspace]
+members = ["ul-jvm", "ul-jni"]
+resolver = "2"
 
-[dependencies]
-env_logger = "0.11"
-log = "0.4"
-anyhow = "1"
-binrw = "0.14"
-strum = { version = "0.27", features = ["derive"] }
-serde = { version = "1", features = ["derive", "rc"] }
-serde_json = "1"
-either = { version = "1", features = ["serde"] }
-zip = "2.6"
-cached = "0.55"
-parking_lot = "0.12"
+[workspace.package]
+authors = ["Clément Saad (UniverseLambda)"]
+homepage = "https://github.com/UniverseLambda/"
+repository = "https://github.com/UniverseLambda/ul-jvm"
+edition = "2024"
