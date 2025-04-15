@@ -54,7 +54,7 @@ fn main() {
                 && method.ret_type().is_none()
                 && method.is_static()
                 && method.parameters()
-                    == &[JvmTypeDescriptor::Array(Box::new(
+                    == [JvmTypeDescriptor::Array(Box::new(
                         JvmTypeDescriptor::Class("java/lang/String".into()),
                     ))]
         })

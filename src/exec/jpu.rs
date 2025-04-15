@@ -31,7 +31,7 @@ impl<'a> JvmProcessUnit<'a> {
 
         if !self.skip_static_init || target_class.name != thread.current_frame()?.current_class.name
         {
-            self.init_static(thread, &target_class)?;
+            self.init_static(&target_class)?;
         }
 
         let zarma = target_class.read_static(&field_ref.name)?;
@@ -86,7 +86,7 @@ impl<'a> JvmProcessUnit<'a> {
         Ok(class.clone())
     }
 
-    fn init_static(&self, thread: &mut JvmThread, class: &Class) -> anyhow::Result<()> {
+    fn init_static(&self, class: &Class) -> anyhow::Result<()> {
         JvmThread::run_clinit_thread(self.env, class.clone())
     }
 }

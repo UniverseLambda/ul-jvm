@@ -3,12 +3,12 @@ use std::{
     ops::Deref,
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering},
+        atomic::AtomicBool,
     },
 };
 
 use anyhow::{anyhow, bail};
-use parking_lot::{Mutex, ReentrantMutex, RwLock};
+use parking_lot::{Mutex, ReentrantMutex};
 
 use crate::class::constant_pool::{
     ConstantDouble, ConstantFieldref, ConstantLong, LoadableJvmConstant,

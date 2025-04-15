@@ -16,7 +16,6 @@ use thread::JvmThread;
 use crate::{
     class::{
         JvmClass, JvmUnit, JvmUnitField, JvmUnitMethod, JvmUnitType,
-        constant_pool::LoadableJvmConstant,
     },
     types::JvmTypeDescriptor,
 };
