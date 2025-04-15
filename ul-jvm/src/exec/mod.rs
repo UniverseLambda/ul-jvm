@@ -239,7 +239,42 @@ impl JvmExecEnv {
                     Interface::new(class_name, static_fields),
                 );
             }
-            JvmUnitType::Record(_) => todo!(),
+            JvmUnitType::Record(mut rec) => {
+                self.partial_classes.push(PartialClass {
+                    super_class: jvm_unit
+                        .super_class
+                        .map(|s| Either::Left(s.name.as_ref().clone())),
+                    name: class_name,
+                    constant_pool: ConstantPool::new(
+                        jvm_unit.loadable_constant_pool,
+                        jvm_unit.field_refs,
+                        jvm_unit.method_refs,
+                        jvm_unit.interface_method_refs,
+                    ),
+                    static_fields,
+                    fields: rec
+                        .components
+                        .drain(..)
+                        // TODO: check if this is the proper way to handle records components (or if should do the same as with classes)
+                        .map(|c| ClassField {
+                            value: RuntimeType::default_of(&c.descriptor),
+                            name: c.name,
+                            is_final: true,
+                        })
+                        .collect::<Vec<_>>()
+                        .into_boxed_slice(),
+                    methods: methods
+                        .drain()
+                        .map(|(k, v)| (k, v.into_boxed_slice()))
+                        .collect(),
+                    interfaces: jvm_unit
+                        .interfaces
+                        .into_iter()
+                        .map(|i| Either::Left(i.name))
+                        .collect(),
+                    is_abstract: false,
+                });
+            }
             JvmUnitType::Module(_) => (), // TODO: Modules
         }
 
