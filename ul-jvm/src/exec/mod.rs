@@ -11,7 +11,6 @@ use interface::Interface;
 use log::debug;
 use method::Method;
 use runtime_type::RuntimeType;
-use thread::JvmThread;
 
 use crate::{
     class::{
@@ -35,7 +34,7 @@ pub struct JvmExecEnv {
     pub classes: HashMap<String, Class>,
     pub interfaces: HashMap<String, Interface>,
     pub heap: JvmHeap,
-    pub threads: Vec<JvmThread>,
+    // pub threads: Vec<JvmThread>,
     pub start_class: Option<Class>,
     pub code: Vec<u8>,
 
@@ -50,7 +49,7 @@ impl JvmExecEnv {
             classes: HashMap::new(),
             interfaces: HashMap::new(),
             heap: JvmHeap::new(),
-            threads: Vec::new(),
+            // threads: Vec::new(),
             start_class: None,
             code: Vec::new(),
             partial_classes: Vec::new(),
