@@ -1,11 +1,14 @@
 use std::{
     collections::HashMap,
     ops::Deref,
-    sync::{Arc, OnceLock, atomic::AtomicBool},
+    sync::{
+        Arc, OnceLock,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use anyhow::{anyhow, bail};
-use parking_lot::{Mutex, ReentrantMutex};
+use parking_lot::{Mutex, ReentrantMutex, ReentrantMutexGuard};
 
 use crate::{
     class::constant_pool::{
@@ -30,15 +33,6 @@ pub struct ClassInstance {
     pub parent: Option<Box<ClassInstance>>,
     pub fields: Box<[RuntimeType]>,
     pub backing: Option<InternalBacking>,
-}
-
-#[derive(Debug, Clone)]
-pub struct UninitClassInstance(ClassInstance);
-
-impl UninitClassInstance {
-    pub fn assume_init(self) -> ClassInstance {
-        self.0
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -140,6 +134,17 @@ impl Class {
 
         Ok(())
     }
+
+    pub fn lock_statics(&self) -> ReentrantMutexGuard<HashMap<String, Mutex<ClassField>>> {
+        self.0.static_fields.lock()
+    }
+
+    pub fn set_initialized_if_needed(&self) -> bool {
+        self.0
+            .statics_initialized
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_ok()
+    }
 }
 
 impl AsRef<InnerClass> for Class {
@@ -167,8 +172,6 @@ impl ObjectBacking for Class {
                     .clone();
 
                 let instance = class.instanciate_uninit();
-
-                
 
                 // TODO: obj ctor call
 

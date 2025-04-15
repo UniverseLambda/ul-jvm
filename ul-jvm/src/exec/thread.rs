@@ -169,6 +169,11 @@ impl JvmThread {
             return Ok(());
         };
 
+        let _lock = class.lock_statics();
+        if class.set_initialized_if_needed() {
+            return Ok(());
+        }
+
         let mut instance = Self::new(class.clone(), method);
 
         instance.skip_static_init = true;
