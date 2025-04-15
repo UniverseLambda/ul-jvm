@@ -33,6 +33,7 @@ pub struct JvmUnit {
     pub methods: Vec<JvmUnitMethod>,
     pub field_refs: HashMap<u16, ConstantFieldref>,
     pub method_refs: HashMap<u16, ConstantMethodref>,
+    pub interface_method_refs: HashMap<u16, ConstantInterfaceMethodref>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -502,6 +503,7 @@ impl JvmUnit {
             methods,
             field_refs,
             method_refs,
+            interface_method_refs,
         })
     }
 }

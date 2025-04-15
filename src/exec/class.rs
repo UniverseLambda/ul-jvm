@@ -1,17 +1,18 @@
 use std::{
     collections::HashMap,
     ops::Deref,
-    sync::{
-        Arc,
-        atomic::AtomicBool,
-    },
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use anyhow::{anyhow, bail};
 use parking_lot::{Mutex, ReentrantMutex};
 
-use crate::class::constant_pool::{
-    ConstantDouble, ConstantFieldref, ConstantLong, LoadableJvmConstant,
+use crate::{
+    class::constant_pool::{
+        ConstantDouble, ConstantFieldref, ConstantInterfaceMethodref, ConstantLong,
+        ConstantMethodref, LoadableJvmConstant,
+    },
+    types::JvmMethodDescriptor,
 };
 
 use super::{interface::Interface, method::Method, runtime_type::RuntimeType};
@@ -63,7 +64,7 @@ impl Class {
         constant_pool: ConstantPool,
         static_fields: HashMap<String, ClassField>,
         fields: Box<[ClassField]>,
-        methods: HashMap<String, Method>,
+        methods: HashMap<String, Box<[Method]>>,
         is_abstract: bool,
     ) -> Self {
         Self(Arc::new(InnerClass {
@@ -82,6 +83,14 @@ impl Class {
             methods,
             is_abstract,
         }))
+    }
+
+    pub fn get_method(&self, name: &String, ty: JvmMethodDescriptor) -> Option<&Method> {
+        self.methods.get(name).and_then(|methods| {
+            methods
+                .iter()
+                .find(|v| v.parameters() == ty.parameter_types && v.ret_type() == &ty.return_type)
+        })
     }
 
     pub fn read_static(&self, name: &String) -> anyhow::Result<RuntimeType> {
@@ -134,21 +143,35 @@ impl Deref for Class {
 pub struct ConstantPool {
     loadables: HashMap<u16, LoadableJvmConstant>,
     fieldrefs: HashMap<u16, ConstantFieldref>,
+    methodrefs: HashMap<u16, ConstantMethodref>,
+    interface_methodrefs: HashMap<u16, ConstantInterfaceMethodref>,
 }
 
 impl ConstantPool {
     pub fn new(
         loadables: HashMap<u16, LoadableJvmConstant>,
         fieldrefs: HashMap<u16, ConstantFieldref>,
+        methodrefs: HashMap<u16, ConstantMethodref>,
+        interface_methodrefs: HashMap<u16, ConstantInterfaceMethodref>,
     ) -> Self {
         Self {
             loadables,
             fieldrefs,
+            methodrefs,
+            interface_methodrefs,
         }
     }
 
     pub fn get_field_ref(&self, cp_index: u16) -> Option<ConstantFieldref> {
         self.fieldrefs.get(&cp_index).cloned()
+    }
+
+    pub fn get_method_ref(&self, cp_index: u16) -> Option<ConstantMethodref> {
+        self.methodrefs.get(&cp_index).cloned()
+    }
+
+    pub fn get_interface_method_ref(&self, cp_index: u16) -> Option<ConstantInterfaceMethodref> {
+        self.interface_methodrefs.get(&cp_index).cloned()
     }
 
     pub fn get_long(&self, cp_index: u16) -> Option<ConstantLong> {
@@ -181,7 +204,7 @@ pub struct InnerClass {
     static_fields: ReentrantMutex<HashMap<String, Mutex<ClassField>>>,
     statics_initialized: AtomicBool,
     pub fields: Box<[ClassField]>,
-    pub methods: HashMap<String, Method>,
+    pub methods: HashMap<String, Box<[Method]>>,
     pub is_abstract: bool,
 }
 

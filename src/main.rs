@@ -46,21 +46,24 @@ fn main() {
         .as_ref()
         .expect("no start class found");
 
-    let (_, main_method) = start_class
+    let main_method = start_class
         .methods
-        .iter()
-        .find(|(name, method)| {
-            *name == "main"
-                && method.ret_type().is_none()
-                && method.is_static()
-                && method.parameters()
-                    == [JvmTypeDescriptor::Array(Box::new(
-                        JvmTypeDescriptor::Class("java/lang/String".into()),
-                    ))]
+        .get(&"main".to_string())
+        .and_then(|methods| {
+            methods.iter().find(|method| {
+                method.ret_type().is_none()
+                    && method.is_static()
+                    && method.parameters()
+                        == [JvmTypeDescriptor::Array(Box::new(
+                            JvmTypeDescriptor::Class("java/lang/String".into()),
+                        ))]
+            })
         })
         .expect("no main method in the specified class");
 
     let mut main_thread = JvmThread::new(start_class.clone(), main_method);
+
+    debug!("starting main thread (class: {})", start_class.name);
 
     if let Err(err) = main_thread.run(&jvm_exec_env) {
         error!("error on main thread: {err}");

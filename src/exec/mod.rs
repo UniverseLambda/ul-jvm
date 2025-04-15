@@ -168,47 +168,42 @@ impl JvmExecEnv {
             .map(|f| (f.name.as_ref().clone(), f))
             .collect::<HashMap<String, ClassField>>();
 
-        let methods = jvm_unit
-            .methods
-            .iter()
-            .cloned()
-            .map(|m| {
-                let name = m.name;
+        let mut methods: HashMap<String, Vec<Method>> = HashMap::new();
 
-                (
-                    name.as_ref().clone(),
-                    if m.is_abstract {
-                        Method::new_abstract(
-                            m.descriptor.return_type,
-                            m.descriptor.parameter_types,
-                            name,
-                            m.is_static,
-                        )
-                    } else if m.is_native {
-                        Method::new_native(
-                            m.descriptor.return_type,
-                            m.descriptor.parameter_types,
-                            name,
-                            m.is_static,
-                        )
-                    } else {
-                        let cp_start = self.code.len();
-                        self.code.extend_from_slice(&m.code.unwrap().code);
-                        let cp_end = self.code.len();
+        for m in jvm_unit.methods.iter().cloned() {
+            let name = m.name;
+            let entry = methods.entry(name.as_ref().clone()).or_default();
 
-                        Method::new_normal(
-                            m.descriptor.return_type,
-                            m.descriptor.parameter_types,
-                            name,
-                            m.is_static,
-                            cp_start,
-                            cp_end,
-                            m.local_count,
-                        )
-                    },
+            entry.push(if m.is_abstract {
+                Method::new_abstract(
+                    m.descriptor.return_type,
+                    m.descriptor.parameter_types,
+                    name,
+                    m.is_static,
                 )
-            })
-            .collect();
+            } else if m.is_native {
+                Method::new_native(
+                    m.descriptor.return_type,
+                    m.descriptor.parameter_types,
+                    name,
+                    m.is_static,
+                )
+            } else {
+                let cp_start = self.code.len();
+                self.code.extend_from_slice(&m.code.unwrap().code);
+                let cp_end = self.code.len();
+
+                Method::new_normal(
+                    m.descriptor.return_type,
+                    m.descriptor.parameter_types,
+                    name,
+                    m.is_static,
+                    cp_start,
+                    cp_end,
+                    m.local_count,
+                )
+            });
+        }
 
         match jvm_unit.unit_type {
             JvmUnitType::Class(JvmClass { is_abstract, .. }) => {
@@ -220,10 +215,15 @@ impl JvmExecEnv {
                     constant_pool: ConstantPool::new(
                         jvm_unit.loadable_constant_pool,
                         jvm_unit.field_refs,
+                        jvm_unit.method_refs,
+                        jvm_unit.interface_method_refs,
                     ),
                     static_fields,
                     fields,
-                    methods,
+                    methods: methods
+                        .drain()
+                        .map(|(k, v)| (k, v.into_boxed_slice()))
+                        .collect(),
                     interfaces: jvm_unit
                         .interfaces
                         .into_iter()
@@ -302,7 +302,7 @@ pub struct PartialClass {
     constant_pool: ConstantPool,
     static_fields: HashMap<String, ClassField>,
     fields: Box<[ClassField]>,
-    methods: HashMap<String, Method>,
+    methods: HashMap<String, Box<[Method]>>,
     interfaces: Vec<Either<Arc<String>, Interface>>,
     is_abstract: bool,
 }

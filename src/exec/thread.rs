@@ -1,6 +1,9 @@
 use std::io::Write;
 
 use anyhow::{Context, anyhow, bail};
+use log::info;
+
+use crate::types::JvmMethodDescriptor;
 
 use super::{
     JvmExecEnv, class::Class, jpu::JvmProcessUnit, method::Method, runtime_type::RuntimeType,
@@ -116,13 +119,19 @@ impl JvmThread {
     }
 
     pub fn run(&mut self, env: &JvmExecEnv) -> anyhow::Result<()> {
+        info!("starting thread");
+
         let jpu = JvmProcessUnit::jpu_new(env, self.skip_static_init);
 
         while !self.stack.is_empty() {
             match self.pop_byte(env)? {
-                0xB2 => {
+                0xb2 => {
                     let short = self.pop_short(env)?;
                     jpu.getstatic(self, short)?
+                }
+                0xb8 => {
+                    let short = self.pop_short(env)?;
+                    jpu.invokestatic(self, short)?;
                 }
                 0x14 => {
                     let short = self.pop_short(env)?;
@@ -150,13 +159,13 @@ impl JvmThread {
     }
 
     pub fn run_clinit_thread(env: &JvmExecEnv, class: Class) -> anyhow::Result<()> {
-        let Some(method) = class.methods.iter().find_map(|m| {
-            if m.0 == "<clinit>" && m.1.parameters().is_empty() && m.1.ret_type().is_none() {
-                Some(m.1)
-            } else {
-                None
-            }
-        }) else {
+        let Some(method) = class.get_method(
+            &String::from("<clinit>"),
+            JvmMethodDescriptor {
+                return_type: None,
+                parameter_types: vec![],
+            },
+        ) else {
             return Ok(());
         };
 
@@ -164,6 +173,10 @@ impl JvmThread {
 
         instance.skip_static_init = true;
         instance.run(env)
+    }
+
+    pub fn jmp_jvm_method(&mut self, class: Class, method: &Method) {
+        self.call_intro(class, method.start_pc().unwrap(), method.local_count());
     }
 
     fn call_intro(&mut self, class: Class, pc: usize, local_count: usize) {

@@ -1,4 +1,5 @@
 use anyhow::{Context, anyhow, bail};
+use log::{debug, trace};
 
 use crate::exec::runtime_type::RuntimeType;
 
@@ -18,6 +19,8 @@ impl<'a> JvmProcessUnit<'a> {
     }
 
     pub fn dstore(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
+        trace!("dstore");
+
         let local_index = local_index as usize;
         // TODO: check for double type
         let value = thread.pop_operand_stack()?;
@@ -29,6 +32,8 @@ impl<'a> JvmProcessUnit<'a> {
     }
 
     pub fn getstatic(&self, thread: &mut JvmThread, cp_index: u16) -> anyhow::Result<()> {
+        trace!("getstatic");
+
         let field_ref = thread
             .current_frame()?
             .current_class
@@ -40,10 +45,7 @@ impl<'a> JvmProcessUnit<'a> {
             .resolve_class(&field_ref.class.name)
             .context("getstatic")?;
 
-        if !self.skip_static_init || target_class.name != thread.current_frame()?.current_class.name
-        {
-            self.init_static(&target_class)?;
-        }
+        self.init_static(thread, &target_class)?;
 
         let zarma = target_class.read_static(&field_ref.name)?;
 
@@ -52,7 +54,43 @@ impl<'a> JvmProcessUnit<'a> {
         Ok(())
     }
 
+    pub fn invokestatic(&self, thread: &mut JvmThread, cp_index: u16) -> anyhow::Result<()> {
+        trace!("invokestatic");
+
+        let current_class: Class = thread.current_frame()?.current_class.clone();
+
+        // TODO: handle synchronized
+        // TODO: handle interface methods
+        let (target_class, name, ty) = current_class
+            .constant_pool
+            .get_method_ref(cp_index)
+            .map(|m| (m.class, m.name, m.ty))
+            .or_else(|| {
+                current_class
+                    .constant_pool
+                    .get_interface_method_ref(cp_index)
+                    .map(|m| (m.class, m.name, m.ty))
+            })
+            .ok_or_else(|| anyhow!("no methodref at {cp_index}"))?;
+
+        let target_class = self.resolve_class(&target_class.name)?;
+        let method = target_class.get_method(&name, ty.clone()).ok_or_else(|| {
+            anyhow!(
+                "no method {ty:?} named {name} found in {}",
+                target_class.name
+            )
+        })?;
+
+        self.init_static(thread, &target_class)?;
+
+        thread.jmp_jvm_method(target_class.clone(), method);
+
+        Ok(())
+    }
+
     pub fn ld2c_w(&self, thread: &mut JvmThread, cp_index: u16) -> anyhow::Result<()> {
+        trace!("ld2c_w");
+
         let class = thread.current_frame()?.current_class.clone();
 
         let value = class
@@ -77,6 +115,8 @@ impl<'a> JvmProcessUnit<'a> {
     }
 
     pub fn lstore(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
+        trace!("lstore");
+
         let local_index = local_index as usize;
         // TODO: check for long type
         let value = thread.pop_operand_stack()?;
@@ -98,8 +138,13 @@ impl<'a> JvmProcessUnit<'a> {
         Ok(class.clone())
     }
 
-    fn init_static(&self, class: &Class) -> anyhow::Result<()> {
-        JvmThread::run_clinit_thread(self.env, class.clone())
+    fn init_static(&self, thread: &JvmThread, class: &Class) -> anyhow::Result<()> {
+        if !self.skip_static_init || class.name != thread.current_frame()?.current_class.name {
+            debug!("initializing class {}", class.name);
+            JvmThread::run_clinit_thread(self.env, class.clone())
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -137,8 +182,8 @@ impl<'a> JvmProcessUnit<'a> {
     - dneg:                 TODO
     - drem:                 TODO
     - dreturn:              TODO
-    - dstore:               DOING
-    - dstore_<n>:           DOING
+    - dstore:               COMPLETED
+    - dstore_<n>:           COMPLETED
     - dsub:                 TODO
     - dup:                  TODO
     - dup_x1:               TODO
@@ -194,7 +239,7 @@ impl<'a> JvmProcessUnit<'a> {
     - invokedynamic:        TODO
     - invokeinterface:      TODO
     - invokespecial:        TODO
-    - invokestatic:         TODO
+    - invokestatic:         TO TEST
     - invokevirtual:        TODO
     - ior:                  TODO
     - irem:                 TODO
