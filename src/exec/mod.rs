@@ -170,6 +170,7 @@ impl JvmExecEnv {
                             m.is_static,
                             cp_start,
                             cp_end,
+                            m.local_count,
                         )
                     },
                 )

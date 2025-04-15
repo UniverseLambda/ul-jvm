@@ -24,6 +24,7 @@ pub struct JvmUnitMethod {
     pub name: ConstantJvmUtf8,
     pub descriptor: JvmMethodDescriptor,
     pub code: Option<Code>,
+    pub local_count: usize,
     pub exceptions: Vec<ConstantClass>,
     pub parameters: Option<Vec<MethodParameter>>,
     pub signature: Option<Signature>,
@@ -298,6 +299,10 @@ impl JvmUnitMethod {
         }
 
         Ok(Self {
+            local_count: code
+                .as_ref()
+                .map(|c| c.max_locals as usize)
+                .unwrap_or_default(),
             code,
             name,
             descriptor: ty,

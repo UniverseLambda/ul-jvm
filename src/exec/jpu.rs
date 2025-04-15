@@ -1,5 +1,4 @@
 use anyhow::{Context, anyhow, bail};
-use either::Either;
 
 use crate::exec::runtime_type::RuntimeType;
 
@@ -57,11 +56,21 @@ impl<'a> JvmProcessUnit<'a> {
             });
 
         if let Some(value) = value {
-            thread.current_frame_mut()?.operand_stack.push(value);
+            thread.push_operand_stack(value)?;
         } else {
             // TODO: implement this case, but I'm not quite sure what I am to expect from here (kinda tired rn)
             todo!("unsupported ld2c_w constant pool value at {cp_index}");
         }
+
+        Ok(())
+    }
+
+    pub fn lstore(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
+        let local_index = local_index as usize;
+        let value = thread.pop_operand_stack()?;
+
+        thread.store_to_local(local_index, value)?;
+        thread.forbid_local(local_index + 1)?;
 
         Ok(())
     }

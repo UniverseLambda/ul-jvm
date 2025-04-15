@@ -19,6 +19,7 @@ impl Method {
         is_static: bool,
         cp_start: usize,
         cp_end: usize,
+        local_count: usize,
     ) -> Self {
         Self::Normal(NormalMethod {
             return_type,
@@ -27,6 +28,7 @@ impl Method {
             is_static,
             cp_start,
             cp_end,
+            local_count,
         })
     }
 
@@ -88,6 +90,13 @@ impl Method {
             _ => None,
         }
     }
+
+    pub fn local_count(&self) -> usize {
+        match self {
+            Method::Normal(m) => m.local_count,
+            _ => 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -98,6 +107,7 @@ pub struct NormalMethod {
     is_static: bool,
     cp_start: usize,
     cp_end: usize,
+    local_count: usize,
 }
 
 #[derive(Debug, Clone)]

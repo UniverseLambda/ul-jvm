@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{io::stdout, path::Path};
 
 use anyhow::{Context, bail};
 use binrw::BinRead;
@@ -6,7 +6,7 @@ use class::{JvmUnit, parser::ClassFile};
 use class_container::read_container;
 use either::Either;
 use exec::{JvmExecEnv, thread::JvmThread};
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use types::JvmTypeDescriptor;
 
 mod class;
@@ -62,9 +62,13 @@ fn main() {
 
     let mut main_thread = JvmThread::new(start_class.clone(), main_method);
 
-    main_thread
-        .run(&jvm_exec_env)
-        .expect("could not run main thread");
+    if let Err(err) = main_thread.run(&jvm_exec_env) {
+        error!("error on main thread: {err}");
+
+        main_thread.dump_to(stdout()).unwrap();
+
+        panic!("error on main thread: {err}");
+    };
 }
 
 pub fn load_unit(full_name: &str, class_path: &[String], dump: bool) -> anyhow::Result<JvmUnit> {
