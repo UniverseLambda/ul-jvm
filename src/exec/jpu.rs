@@ -17,6 +17,17 @@ impl<'a> JvmProcessUnit<'a> {
         }
     }
 
+    pub fn dstore(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
+        let local_index = local_index as usize;
+        // TODO: check for double type
+        let value = thread.pop_operand_stack()?;
+
+        thread.store_to_local(local_index, value)?;
+        thread.forbid_local(local_index + 1)?;
+
+        Ok(())
+    }
+
     pub fn getstatic(&self, thread: &mut JvmThread, cp_index: u16) -> anyhow::Result<()> {
         let field_ref = thread
             .current_frame()?
@@ -67,6 +78,7 @@ impl<'a> JvmProcessUnit<'a> {
 
     pub fn lstore(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
         let local_index = local_index as usize;
+        // TODO: check for long type
         let value = thread.pop_operand_stack()?;
 
         thread.store_to_local(local_index, value)?;
@@ -125,8 +137,8 @@ impl<'a> JvmProcessUnit<'a> {
     - dneg:                 TODO
     - drem:                 TODO
     - dreturn:              TODO
-    - dstore:               TODO
-    - dstore_<n>:           TODO
+    - dstore:               DOING
+    - dstore_<n>:           DOING
     - dsub:                 TODO
     - dup:                  TODO
     - dup_x1:               TODO
@@ -219,8 +231,8 @@ impl<'a> JvmProcessUnit<'a> {
     - lreturn:              TODO
     - lshl:                 TODO
     - lshr:                 TODO
-    - lstore:               TO TEST
-    - lstore_<n>:           TO TEST
+    - lstore:               COMPLETED
+    - lstore_<n>:           COMPLETED
     - lsub:                 TODO
     - lushr:                TODO
     - lxor:                 TODO

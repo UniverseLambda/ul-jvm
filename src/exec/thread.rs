@@ -120,7 +120,7 @@ impl JvmThread {
 
         while !self.stack.is_empty() {
             match self.pop_byte(env)? {
-                0x2b => {
+                0xB2 => {
                     let short = self.pop_short(env)?;
                     jpu.getstatic(self, short)?
                 }
@@ -134,6 +134,13 @@ impl JvmThread {
                 }
                 v @ 0x3f | v @ 0x40 | v @ 0x41 | v @ 0x42 => {
                     jpu.lstore(self, v - 0x3f)?;
+                }
+                0x39 => {
+                    let local_index = self.pop_byte(env)?;
+                    jpu.dstore(self, local_index)?;
+                }
+                v @ 0x47 | v @ 0x48 | v @ 0x49 | v @ 0x4a => {
+                    jpu.dstore(self, v - 0x47)?;
                 }
                 v => bail!("unknown opcode at 0x{:08X}: 0x{v:02X}", (self.pc - 1)),
             }
