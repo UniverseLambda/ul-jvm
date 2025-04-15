@@ -7,3 +7,6 @@ authors = ["Clément Saad (UniverseLambda)"]
 homepage = "https://github.com/UniverseLambda/"
 repository = "https://github.com/UniverseLambda/ul-jvm"
 edition = "2024"
+
+[workspace.dependencies]
+parking_lot = "0.12"

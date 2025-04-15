@@ -30,6 +30,7 @@ pub mod method;
 pub mod runtime_type;
 pub mod thread;
 
+#[derive(Default)]
 pub struct JvmExecEnv {
     pub classes: HashMap<String, Class>,
     pub interfaces: HashMap<String, Interface>,

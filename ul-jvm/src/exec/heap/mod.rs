@@ -14,7 +14,7 @@ pub enum AllocatableType {
     Class(StrongClassRef),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct JvmHeap {
     values: Mutex<Vec<AllocatableType>>,
 }

@@ -12,6 +12,7 @@ use types::JvmTypeDescriptor;
 mod class;
 mod class_container;
 mod exec;
+mod jni;
 mod types;
 
 fn main() {

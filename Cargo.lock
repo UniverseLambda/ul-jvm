@@ -969,6 +969,9 @@ checksum = "1dccffe3ce07af9386bfd29e80c0ab1a8205a2fc34e4bcd40364df902cfa8f3f"
 [[package]]
 name = "ul-jni"
 version = "0.1.0"
+dependencies = [
+ "parking_lot",
+]
 
 [[package]]
 name = "ul-jvm"

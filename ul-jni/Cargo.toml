@@ -9,3 +9,4 @@ default = []
 mock-api = []
 
 [dependencies]
+parking_lot.workspace = true

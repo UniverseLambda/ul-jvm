@@ -33,6 +33,12 @@ pub struct JvmRef<T> {
     inner: Option<Weak<T>>,
 }
 
+impl<T> Default for JvmRef<T> {
+    fn default() -> Self {
+        Self::new_null()
+    }
+}
+
 impl<T> JvmRef<T> {
     pub fn new_null() -> Self {
         Self { inner: None }
