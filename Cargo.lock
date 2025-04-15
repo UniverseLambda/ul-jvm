@@ -984,6 +984,7 @@ dependencies = [
  "serde",
  "serde_json",
  "strum",
+ "ul-jni",
  "zip",
 ]
 

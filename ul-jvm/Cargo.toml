@@ -16,4 +16,4 @@ either = { version = "1", features = ["serde"] }
 zip = "2.6"
 cached = "0.55"
 parking_lot = "0.12"
-ul_jni.path = "../ul-jni"
+ul-jni.path = "../ul-jni"
