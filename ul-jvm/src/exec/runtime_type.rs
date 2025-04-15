@@ -3,7 +3,7 @@ use crate::{
     types::{JvmDouble, JvmFloat, JvmInt, JvmLong, JvmTypeDescriptor},
 };
 
-use super::heap::{ArrayRef, ClassRef};
+use super::heap::{ArrayRef, ObjectRef};
 
 #[derive(Debug, Clone)]
 pub enum RuntimeType {
@@ -12,14 +12,14 @@ pub enum RuntimeType {
     Float(JvmFloat),
     Double(JvmDouble),
     Array(ArrayRef),
-    Class(ClassRef),
+    Class(ObjectRef),
     InternedString(ConstantJvmUtf8),
 }
 
 impl From<LoadableJvmConstant> for RuntimeType {
     fn from(value: LoadableJvmConstant) -> Self {
         match value {
-            LoadableJvmConstant::Class(_) => Self::Class(ClassRef::new_null()),
+            LoadableJvmConstant::Class(_) => Self::Class(ObjectRef::new_null()),
             LoadableJvmConstant::String(string) => Self::InternedString(string),
             LoadableJvmConstant::Integer(v) => Self::Int(v),
             LoadableJvmConstant::Float(v) => Self::Float(v),
@@ -49,7 +49,7 @@ impl RuntimeType {
             JvmTypeDescriptor::Long => Self::Long(0),
             JvmTypeDescriptor::Double => Self::Float(0f32),
             JvmTypeDescriptor::Float => Self::Double(0f64),
-            JvmTypeDescriptor::Class(_) => Self::Class(ClassRef::new_null()),
+            JvmTypeDescriptor::Class(_) => Self::Class(ObjectRef::new_null()),
             JvmTypeDescriptor::Array(_) => Self::Array(ArrayRef::new_null()),
         }
     }

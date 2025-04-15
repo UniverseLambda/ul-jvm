@@ -6,9 +6,9 @@ use ul_jni::{
     types::JniInt,
 };
 
-use crate::exec::{JvmExecEnv, heap::ClassRef};
+use crate::exec::{JvmExecEnv, heap::ObjectRef};
 
-static JNI_INTERFACE: LazyLock<JniInterfaceFunctions<JvmExecEnv, ClassRef>> =
+static JNI_INTERFACE: LazyLock<JniInterfaceFunctions<JvmExecEnv, ObjectRef>> =
     LazyLock::new(|| JniInterfaceFunctions {
         get_version: Some(get_version),
         // define_class: todo!(),

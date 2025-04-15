@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     ops::Deref,
-    sync::{Arc, atomic::AtomicBool},
+    sync::{Arc, OnceLock, atomic::AtomicBool},
 };
 
 use anyhow::{anyhow, bail};
@@ -15,7 +15,13 @@ use crate::{
     types::JvmMethodDescriptor,
 };
 
-use super::{interface::Interface, method::Method, runtime_type::RuntimeType};
+use super::{
+    JvmExecEnv,
+    heap::{ObjectRef, StrongObjectRef},
+    interface::Interface,
+    method::Method,
+    runtime_type::RuntimeType,
+};
 
 #[derive(Debug, Clone)]
 pub struct ClassInstance {
@@ -23,6 +29,7 @@ pub struct ClassInstance {
     pub is_abstract: bool,
     pub parent: Option<Box<ClassInstance>>,
     pub fields: Box<[RuntimeType]>,
+    pub backing: Option<InternalBacking>,
 }
 
 #[derive(Debug, Clone)]
@@ -38,23 +45,32 @@ impl UninitClassInstance {
 pub struct Class(Arc<InnerClass>);
 
 impl Class {
-    pub fn instanciate_uninit(&self) -> UninitClassInstance {
+    pub fn instanciate_uninit(&self) -> ClassInstance {
         let class_instance = ClassInstance {
             class_type: self.clone(),
             is_abstract: false,
             parent: self
                 .super_class
                 .as_ref()
-                .map(|c| Box::new(c.instanciate_uninit().assume_init())),
+                .map(|c| Box::new(c.instanciate_uninit())),
             fields: self
                 .fields
                 .iter()
                 .map(|f| f.value.clone())
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
+            backing: None,
         };
 
-        UninitClassInstance(class_instance)
+        class_instance
+    }
+
+    pub fn instanciante_special(&self, backing: InternalBacking) -> ClassInstance {
+        let mut class = self.instanciate_uninit();
+
+        class.backing = Some(backing);
+
+        class
     }
 
     pub fn new(
@@ -82,6 +98,7 @@ impl Class {
             fields,
             methods,
             is_abstract,
+            backed_instance: OnceLock::new(),
         }))
     }
 
@@ -136,6 +153,28 @@ impl Deref for Class {
 
     fn deref(&self) -> &Self::Target {
         self.0.deref()
+    }
+}
+
+impl ObjectBacking for Class {
+    fn as_object(&self, env: &JvmExecEnv) -> ObjectRef {
+        self.backed_instance
+            .get_or_init(|| {
+                let class = env
+                    .classes
+                    .get(&String::from("java/lang/Class"))
+                    .expect("mandatory class java/lang/Class not loaded")
+                    .clone();
+
+                let instance = class.instanciate_uninit();
+
+                let obj_ref = env.heap.store_object(instance);
+
+                // TODO: obj ctor call
+
+                obj_ref
+            })
+            .new_ref()
     }
 }
 
@@ -206,6 +245,7 @@ pub struct InnerClass {
     pub fields: Box<[ClassField]>,
     pub methods: HashMap<String, Box<[Method]>>,
     pub is_abstract: bool,
+    pub backed_instance: OnceLock<StrongObjectRef>,
 }
 
 #[derive(Debug, Clone)]
@@ -213,4 +253,13 @@ pub struct ClassField {
     pub name: Arc<String>,
     pub value: RuntimeType,
     pub is_final: bool,
+}
+
+#[derive(Debug, Clone)]
+pub enum InternalBacking {
+    Class(Class),
+}
+
+pub trait ObjectBacking {
+    fn as_object(&self, env: &JvmExecEnv) -> ObjectRef;
 }

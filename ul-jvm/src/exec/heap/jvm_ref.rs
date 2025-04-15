@@ -21,9 +21,16 @@ impl<T> JvmStrongRef<T> {
         }
     }
 
-    pub(super) fn new_ref(&self) -> JvmRef<T> {
+    pub fn new_ref(&self) -> JvmRef<T> {
         JvmRef {
             inner: self.inner.as_ref().map(|a| Arc::downgrade(a)),
+        }
+    }
+
+    pub fn duplicate(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            last_visited: AtomicUsize::new(0),
         }
     }
 }
@@ -51,6 +58,13 @@ impl<T> JvmRef<T> {
     pub fn is_null(&self) -> bool {
         self.inner.is_none()
     }
+
+    pub fn upgrade(&self) -> Option<JvmStrongRef<T>> {
+        self.inner.as_ref().map(|v| JvmStrongRef {
+            inner: v.upgrade(),
+            last_visited: AtomicUsize::new(0),
+        })
+    }
 }
 
 // pub struct JvmRefReadHandle<T>(Arc<T>);
@@ -69,8 +83,8 @@ impl<T> JvmRef<T> {
 //     }
 // }
 
-pub type ClassRef = JvmRef<ClassInstance>;
+pub type ObjectRef = JvmRef<ClassInstance>;
 pub type ArrayRef = JvmRef<Array>;
 
-pub type StrongClassRef = JvmStrongRef<ClassInstance>;
+pub type StrongObjectRef = JvmStrongRef<ClassInstance>;
 pub type StrongArrayRef = JvmStrongRef<Array>;

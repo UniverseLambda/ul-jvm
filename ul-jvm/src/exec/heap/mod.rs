@@ -1,17 +1,19 @@
 mod jvm_ref;
 
-pub use jvm_ref::{ArrayRef, ClassRef};
-use jvm_ref::{StrongArrayRef, StrongClassRef};
+pub use jvm_ref::{ArrayRef, ObjectRef, StrongArrayRef, StrongObjectRef};
 use parking_lot::Mutex;
 
 use crate::types::{JvmInt, JvmTypeDescriptor};
 
-use super::{array::Array, class::Class};
+use super::{
+    array::Array,
+    class::{Class, ClassInstance},
+};
 
 #[derive(Debug)]
 pub enum AllocatableType {
     Array(StrongArrayRef),
-    Class(StrongClassRef),
+    Class(StrongObjectRef),
 }
 
 #[derive(Debug, Default)]
@@ -35,12 +37,22 @@ impl JvmHeap {
         ret_ref
     }
 
-    pub fn new_object(&self, class: Class) -> ClassRef {
-        let strong_ref = StrongClassRef::new(class.instanciate_uninit().assume_init());
+    pub fn new_object(&self, class: Class) -> ObjectRef {
+        let strong_ref = StrongObjectRef::new(class.instanciate_uninit());
         let ret_ref = strong_ref.new_ref();
 
         self.values.lock().push(AllocatableType::Class(strong_ref));
 
         ret_ref
+    }
+
+    pub fn store_object(&self, instance: ClassInstance) -> StrongObjectRef {
+        let strong_ref = StrongObjectRef::new(instance);
+
+        self.values
+            .lock()
+            .push(AllocatableType::Class(strong_ref.duplicate()));
+
+        strong_ref
     }
 }

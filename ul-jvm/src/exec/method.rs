@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::types::JvmTypeDescriptor;
 
-use super::{heap::ClassRef, runtime_type::RuntimeType};
+use super::{heap::ObjectRef, runtime_type::RuntimeType};
 
 #[derive(Debug, Clone)]
 pub enum Method {
@@ -136,5 +136,5 @@ pub struct NativeMethod {
 #[derive(Debug, Clone)]
 pub enum ReturnResult {
     Complete(RuntimeType),
-    Exception(ClassRef),
+    Exception(ObjectRef),
 }
