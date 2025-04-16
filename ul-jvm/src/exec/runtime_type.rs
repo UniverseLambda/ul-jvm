@@ -1,6 +1,6 @@
 use crate::{
     class::constant_pool::{ConstantJvmUtf8, LoadableJvmConstant},
-    types::{JvmDouble, JvmFloat, JvmInt, JvmLong, JvmTypeDescriptor},
+    types::{JvmDouble, JvmFloat, JvmInt, JvmLong, JvmTypeDescriptor, NativeJvmType},
 };
 
 use super::heap::{ArrayRef, ObjectRef};
@@ -52,5 +52,9 @@ impl RuntimeType {
             JvmTypeDescriptor::Class(_) => Self::Class(ObjectRef::new_null()),
             JvmTypeDescriptor::Array(_) => Self::Array(ArrayRef::new_null()),
         }
+    }
+
+    pub fn try_into_native<N: NativeJvmType>(&self) -> Option<N> {
+        N::try_from_rt(self)
     }
 }

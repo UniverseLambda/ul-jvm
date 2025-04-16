@@ -35,9 +35,17 @@ impl<T> JvmStrongRef<T> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct JvmRef<T> {
     inner: Option<Weak<T>>,
+}
+
+impl<T> Clone for JvmRef<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
 }
 
 impl<T> Default for JvmRef<T> {

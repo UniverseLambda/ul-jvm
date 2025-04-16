@@ -3,6 +3,8 @@ use std::str::FromStr;
 use anyhow::{Context, anyhow, bail};
 use serde::Serialize;
 
+use crate::exec::runtime_type::RuntimeType;
+
 pub type JvmInt = i32;
 pub type JvmLong = i64;
 
@@ -134,6 +136,183 @@ impl FromStr for JvmMethodDescriptor {
             parameter_types,
             return_type,
         })
+    }
+}
+
+pub trait NativeJvmType {
+    fn to_jvm_type() -> JvmTypeDescriptor;
+    fn to_runtime_type(&self) -> RuntimeType;
+
+    fn try_from_rt(rt: &RuntimeType) -> Option<Self>
+    where
+        Self: Sized;
+}
+
+pub trait NativeOptJvmType {
+    fn to_opt_jvm_type() -> Option<JvmTypeDescriptor>;
+    fn to_opt_runtime_type(&self) -> Option<RuntimeType>;
+}
+
+impl NativeOptJvmType for () {
+    fn to_opt_jvm_type() -> Option<JvmTypeDescriptor> {
+        None
+    }
+
+    fn to_opt_runtime_type(&self) -> Option<RuntimeType> {
+        None
+    }
+}
+
+impl<T> NativeOptJvmType for T
+where
+    T: NativeJvmType,
+{
+    fn to_opt_jvm_type() -> Option<JvmTypeDescriptor> {
+        Some(T::to_jvm_type())
+    }
+
+    fn to_opt_runtime_type(&self) -> Option<RuntimeType> {
+        Some(self.to_runtime_type())
+    }
+}
+
+impl NativeJvmType for i8 {
+    fn to_jvm_type() -> JvmTypeDescriptor {
+        JvmTypeDescriptor::Byte
+    }
+
+    fn to_runtime_type(&self) -> RuntimeType {
+        RuntimeType::Int(*self as JvmInt)
+    }
+
+    fn try_from_rt(rt: &RuntimeType) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        match rt {
+            RuntimeType::Int(v) => Some(*v as Self),
+            _ => None,
+        }
+    }
+}
+
+impl NativeJvmType for i16 {
+    fn to_jvm_type() -> JvmTypeDescriptor {
+        JvmTypeDescriptor::Short
+    }
+
+    fn to_runtime_type(&self) -> RuntimeType {
+        RuntimeType::Int(*self as JvmInt)
+    }
+
+    fn try_from_rt(rt: &RuntimeType) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        match rt {
+            RuntimeType::Int(v) => Some(*v as Self),
+            _ => None,
+        }
+    }
+}
+
+impl NativeJvmType for i32 {
+    fn to_jvm_type() -> JvmTypeDescriptor {
+        JvmTypeDescriptor::Int
+    }
+
+    fn to_runtime_type(&self) -> RuntimeType {
+        RuntimeType::Int(*self as JvmInt)
+    }
+
+    fn try_from_rt(rt: &RuntimeType) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        match rt {
+            RuntimeType::Int(v) => Some(*v as Self),
+            _ => None,
+        }
+    }
+}
+
+impl NativeJvmType for i64 {
+    fn to_jvm_type() -> JvmTypeDescriptor {
+        JvmTypeDescriptor::Long
+    }
+
+    fn to_runtime_type(&self) -> RuntimeType {
+        RuntimeType::Long(*self)
+    }
+
+    fn try_from_rt(rt: &RuntimeType) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        match rt {
+            RuntimeType::Long(v) => Some(*v as Self),
+            _ => None,
+        }
+    }
+}
+
+impl NativeJvmType for f32 {
+    fn to_jvm_type() -> JvmTypeDescriptor {
+        JvmTypeDescriptor::Float
+    }
+
+    fn to_runtime_type(&self) -> RuntimeType {
+        RuntimeType::Float(*self)
+    }
+
+    fn try_from_rt(rt: &RuntimeType) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        match rt {
+            RuntimeType::Float(v) => Some(*v as Self),
+            _ => None,
+        }
+    }
+}
+
+impl NativeJvmType for f64 {
+    fn to_jvm_type() -> JvmTypeDescriptor {
+        JvmTypeDescriptor::Double
+    }
+
+    fn to_runtime_type(&self) -> RuntimeType {
+        RuntimeType::Double(*self)
+    }
+
+    fn try_from_rt(rt: &RuntimeType) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        match rt {
+            RuntimeType::Double(v) => Some(*v as Self),
+            _ => None,
+        }
+    }
+}
+
+impl NativeJvmType for u16 {
+    fn to_jvm_type() -> JvmTypeDescriptor {
+        JvmTypeDescriptor::Char
+    }
+
+    fn to_runtime_type(&self) -> RuntimeType {
+        RuntimeType::Int(*self as JvmInt)
+    }
+
+    fn try_from_rt(rt: &RuntimeType) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        match rt {
+            RuntimeType::Int(v) => Some(*v as Self),
+            _ => None,
+        }
     }
 }
 

@@ -15,6 +15,7 @@ use crate::{
         ConstantDouble, ConstantFieldref, ConstantInterfaceMethodref, ConstantLong,
         ConstantMethodref, LoadableJvmConstant,
     },
+    native::jnb::{JnbObject, JnbObjectType},
     types::JvmMethodDescriptor,
 };
 
@@ -26,13 +27,13 @@ use super::{
     runtime_type::RuntimeType,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ClassInstance {
     pub class_type: Class,
     pub is_abstract: bool,
     pub parent: Option<Box<ClassInstance>>,
     pub fields: Box<[RuntimeType]>,
-    pub backing: Option<InternalBacking>,
+    pub jnb: Option<Box<dyn JnbObject>>,
 }
 
 #[derive(Debug, Clone)]
@@ -53,18 +54,31 @@ impl Class {
                 .map(|f| f.value.clone())
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
-            backing: None,
+            jnb: self.jnb.as_ref().map(|jnb| jnb.instanciate_uninit()),
         };
 
         class_instance
     }
 
-    pub fn instanciante_special(&self, backing: InternalBacking) -> ClassInstance {
-        let mut class = self.instanciate_uninit();
-
-        class.backing = Some(backing);
-
-        class
+    pub fn new_standalone_jnb(
+        super_class: Option<Class>,
+        interfaces: Vec<Interface>,
+        name: Arc<String>,
+        constant_pool: ConstantPool,
+        jnb_type: Box<dyn JnbObjectType>,
+    ) -> Self {
+        Self(Arc::new(InnerClass {
+            super_class,
+            interfaces,
+            name,
+            constant_pool,
+            static_fields: ReentrantMutex::new(HashMap::new()),
+            statics_initialized: AtomicBool::new(false),
+            fields: Box::new([]),
+            methods: HashMap::new(),
+            is_abstract: false,
+            jnb: Some(jnb_type),
+        }))
     }
 
     pub fn new(
@@ -76,6 +90,7 @@ impl Class {
         fields: Box<[ClassField]>,
         methods: HashMap<String, Box<[Method]>>,
         is_abstract: bool,
+        jnb_type: Option<Box<dyn JnbObjectType>>,
     ) -> Self {
         Self(Arc::new(InnerClass {
             super_class,
@@ -92,7 +107,7 @@ impl Class {
             fields,
             methods,
             is_abstract,
-            backed_instance: OnceLock::new(),
+            jnb: jnb_type,
         }))
     }
 
@@ -161,25 +176,23 @@ impl Deref for Class {
     }
 }
 
-impl ObjectBacking for Class {
-    fn as_object(&self, env: &JvmExecEnv) -> ObjectRef {
-        self.backed_instance
-            .get_or_init(|| {
-                let class = env
-                    .classes
-                    .get(&String::from("java/lang/Class"))
-                    .expect("mandatory class java/lang/Class not loaded")
-                    .clone();
+// impl ObjectBacking for Class {
+//     fn as_object(&self, env: &JvmExecEnv) -> ObjectRef {
+//         self.backed_instance
+//             .get_or_init(|| {
+//                 let class = env
+//                     .classes
+//                     .get(&String::from("java/lang/Class"))
+//                     .expect("mandatory class java/lang/Class not loaded")
+//                     .clone();
 
-                let instance = class.instanciate_uninit();
+//                 let instance = class.instanciante_special(InternalBacking::Class(self.clone()));
 
-                // TODO: obj ctor call
-
-                env.heap.store_object(instance)
-            })
-            .new_ref()
-    }
-}
+//                 env.heap.store_object(instance)
+//             })
+//             .new_ref()
+//     }
+// }
 
 #[derive(Debug, Clone)]
 pub struct ConstantPool {
@@ -248,7 +261,7 @@ pub struct InnerClass {
     pub fields: Box<[ClassField]>,
     pub methods: HashMap<String, Box<[Method]>>,
     pub is_abstract: bool,
-    pub backed_instance: OnceLock<StrongObjectRef>,
+    pub jnb: Option<Box<dyn JnbObjectType>>,
 }
 
 #[derive(Debug, Clone)]
@@ -256,11 +269,6 @@ pub struct ClassField {
     pub name: Arc<String>,
     pub value: RuntimeType,
     pub is_final: bool,
-}
-
-#[derive(Debug, Clone)]
-pub enum InternalBacking {
-    Class(Class),
 }
 
 pub trait ObjectBacking {

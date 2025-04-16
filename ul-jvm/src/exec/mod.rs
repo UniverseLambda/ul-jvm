@@ -17,6 +17,7 @@ use crate::{
         JvmClass, JvmUnit, JvmUnitField, JvmUnitMethod, JvmUnitType,
         constant_pool::{ConstantMethodHandle, LoadableJvmConstant},
     },
+    native::jnb::JnbObjectType,
     types::JvmTypeDescriptor,
 };
 
@@ -225,6 +226,7 @@ impl JvmExecEnv {
                         .map(|i| Either::Left(i.name))
                         .collect(),
                     is_abstract,
+                    jnb: None,
                 });
             }
             JvmUnitType::Interface(_) => {
@@ -267,6 +269,7 @@ impl JvmExecEnv {
                         .map(|i| Either::Left(i.name))
                         .collect(),
                     is_abstract: false,
+                    jnb: None,
                 });
             }
             JvmUnitType::Module(_) => (), // TODO: Modules
@@ -335,6 +338,7 @@ pub struct PartialClass {
     methods: HashMap<String, Box<[Method]>>,
     interfaces: Vec<Either<Arc<String>, Interface>>,
     is_abstract: bool,
+    jnb: Option<Box<dyn JnbObjectType>>,
 }
 
 impl PartialClass {
@@ -390,6 +394,7 @@ impl PartialClass {
                 self.fields,
                 self.methods,
                 self.is_abstract,
+                self.jnb,
             ))
         } else {
             Either::Left(self)

@@ -17,3 +17,4 @@ zip = "2.6"
 cached = "0.55"
 parking_lot.workspace = true
 ul-jni.path = "../ul-jni"
+paste = "1.0.15"
