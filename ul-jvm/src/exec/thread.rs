@@ -177,7 +177,7 @@ impl JvmThread {
         };
 
         let _lock = class.lock_statics();
-        if class.set_initialized_if_needed() {
+        if !class.set_initialized_if_needed() {
             return Ok(());
         }
 
