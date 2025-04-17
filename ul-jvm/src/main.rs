@@ -49,6 +49,7 @@ fn main() {
         .expect("no start class found");
 
     let main_method = start_class
+        .get_static_method("main", ty)
         .methods
         .get("main")
         .and_then(|methods| {

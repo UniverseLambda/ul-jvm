@@ -166,7 +166,7 @@ impl JvmThread {
     }
 
     pub fn run_clinit_thread(env: &JvmExecEnv, class: Class) -> anyhow::Result<()> {
-        let Some(method) = class.get_method(
+        let Some(method) = class.get_static_method(
             &String::from("<clinit>"),
             JvmMethodDescriptor {
                 return_type: None,

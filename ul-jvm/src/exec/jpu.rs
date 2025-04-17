@@ -73,7 +73,7 @@ impl<'a> JvmProcessUnit<'a> {
             .ok_or_else(|| anyhow!("no methodref at {cp_index}"))?;
 
         let target_class = self.resolve_class(&target_class.name)?;
-        let method = target_class.get_method(&name, ty.clone()).ok_or_else(|| {
+        let method = target_class.get_static_method(&name, ty.clone()).ok_or_else(|| {
             anyhow!(
                 "no method {ty:?} named {name} found in {}",
                 target_class.name

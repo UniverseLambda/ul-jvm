@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     ops::Deref,
     sync::{
-        Arc, OnceLock,
+        Arc,
         atomic::{AtomicBool, Ordering},
     },
 };
@@ -20,11 +20,7 @@ use crate::{
 };
 
 use super::{
-    JvmExecEnv,
-    heap::{ObjectRef, StrongObjectRef},
-    interface::Interface,
-    method::Method,
-    runtime_type::RuntimeType,
+    JvmExecEnv, heap::ObjectRef, interface::Interface, method::Method, runtime_type::RuntimeType,
 };
 
 #[derive(Debug)]
@@ -72,12 +68,11 @@ impl Class {
             interfaces,
             name,
             constant_pool,
-            static_fields: ReentrantMutex::new(HashMap::new()),
             statics_initialized: AtomicBool::new(false),
-            fields: Box::new([]),
-            methods: HashMap::new(),
-            is_abstract: false,
-            jnb: Some(jnb_type),
+            class_impl: ClassImpl::JnbStandalone {
+                jnb: jnb_type,
+                statics_lock: ReentrantMutex::new(()),
+            },
         }))
     }
 
@@ -97,41 +92,90 @@ impl Class {
             interfaces,
             name,
             constant_pool,
-            static_fields: ReentrantMutex::new(
-                static_fields
-                    .into_iter()
-                    .map(|(k, v)| (k, Mutex::new(v)))
-                    .collect(),
-            ),
             statics_initialized: AtomicBool::new(false),
-            fields,
-            methods,
-            is_abstract,
-            jnb: jnb_type,
+            class_impl: ClassImpl::Normal {
+                static_fields: ReentrantMutex::new(
+                    static_fields
+                        .into_iter()
+                        .map(|(k, v)| (k, Mutex::new(v)))
+                        .collect(),
+                ),
+                fields,
+                methods,
+                is_abstract,
+                jnb: jnb_type,
+            },
         }))
     }
 
-    pub fn get_method(&self, name: &String, ty: JvmMethodDescriptor) -> Option<&Method> {
-        self.methods.get(name).and_then(|methods| {
-            methods
-                .iter()
-                .find(|v| v.parameters() == ty.parameter_types && v.ret_type() == &ty.return_type)
-        })
+    pub fn get_static_method(&self, name: &str, ty: JvmMethodDescriptor) -> Option<Method> {
+        match &self.class_impl {
+            ClassImpl::Normal { methods, .. } => methods.get(name).and_then(|methods| {
+                methods
+                    .iter()
+                    .find(|v| {
+                        v.is_static()
+                            && v.parameters() == ty.parameter_types
+                            && v.ret_type() == &ty.return_type
+                    })
+                    .cloned()
+            }),
+            ClassImpl::JnbStandalone { jnb, .. } => {
+                jnb.descriptor().static_methods.iter().find_map(|m| {
+                    if m.0 == name && m.1 == ty {
+                        Some(Method::new_native(
+                            m.1.return_type.clone(),
+                            m.1.parameter_types.clone(),
+                            Arc::new(m.0.to_string()),
+                            true,
+                        ))
+                    } else {
+                        None
+                    }
+                })
+            }
+        }
+    }
+
+    pub fn get_instance_method(&self, name: &str, ty: JvmMethodDescriptor) -> Option<Method> {
+        match &self.class_impl {
+            ClassImpl::Normal { methods, .. } => methods.get(name).and_then(|methods| {
+                methods
+                    .iter()
+                    .find(|v| {
+                        !v.is_static()
+                            && v.parameters() == ty.parameter_types
+                            && v.ret_type() == &ty.return_type
+                    })
+                    .cloned()
+            }),
+            ClassImpl::JnbStandalone { jnb, .. } => {
+                jnb.descriptor().static_methods.iter().find_map(|m| {
+                    if m.0 == name && m.1 == ty {
+                        Some(Method::new_native(
+                            m.1.return_type.clone(),
+                            m.1.parameter_types.clone(),
+                            Arc::new(m.0.to_string()),
+                            false,
+                        ))
+                    } else {
+                        None
+                    }
+                })
+            }
+        }
     }
 
     pub fn read_static(&self, name: &String) -> anyhow::Result<RuntimeType> {
         // FIXME: throw an error when the statics are not yet initialized
 
-        self.0
-            .static_fields
-            .lock()
+        self.lock_statics()
             .get(name)
-            .map(|s| s.lock().value.clone())
             .ok_or(anyhow!("no static field at {}@{name}", self.name))
     }
 
     pub fn write_static(&self, name: &String, value: RuntimeType) -> anyhow::Result<()> {
-        let lock = self.0.static_fields.lock();
+        let lock = self.lock_statics();
         let var_lock = lock
             .get(name)
             .ok_or(anyhow!("no static field at {}@{name}", self.name))?;
@@ -150,8 +194,13 @@ impl Class {
         Ok(())
     }
 
-    pub fn lock_statics(&self) -> ReentrantMutexGuard<HashMap<String, Mutex<ClassField>>> {
-        self.0.static_fields.lock()
+    pub fn lock_statics(&self) -> StaticLock {
+        match &self.class_impl {
+            ClassImpl::Normal { static_fields, .. } => StaticLock::Normal(static_fields.lock()),
+            ClassImpl::JnbStandalone { jnb, statics_lock } => {
+                StaticLock::JnbStandalone(jnb.as_ref(), statics_lock.lock())
+            }
+        }
     }
 
     pub fn set_initialized_if_needed(&self) -> bool {
@@ -256,12 +305,56 @@ pub struct InnerClass {
     pub interfaces: Vec<Interface>,
     pub name: Arc<String>,
     pub constant_pool: ConstantPool,
-    static_fields: ReentrantMutex<HashMap<String, Mutex<ClassField>>>,
     statics_initialized: AtomicBool,
-    pub fields: Box<[ClassField]>,
-    pub methods: HashMap<String, Box<[Method]>>,
-    pub is_abstract: bool,
-    pub jnb: Option<Box<dyn JnbObjectType>>,
+    class_impl: ClassImpl,
+}
+
+#[derive(Debug)]
+pub enum ClassImpl {
+    Normal {
+        static_fields: ReentrantMutex<HashMap<String, Mutex<ClassField>>>,
+        fields: Box<[ClassField]>,
+        methods: HashMap<String, Box<[Method]>>,
+        is_abstract: bool,
+        jnb: Option<Box<dyn JnbObjectType>>,
+    },
+    JnbStandalone {
+        jnb: Box<dyn JnbObjectType>,
+        statics_lock: ReentrantMutex<()>,
+    },
+}
+
+#[derive(Debug)]
+pub enum StaticLock<'a> {
+    Normal(ReentrantMutexGuard<'a, HashMap<String, Mutex<ClassField>>>),
+    JnbStandalone(&'a dyn JnbObjectType, ReentrantMutexGuard<'a, ()>),
+}
+
+impl<'a> StaticLock<'a> {
+    pub fn get(&self, name: &str) -> Option<RuntimeType> {
+        match self {
+            StaticLock::Normal(guard) => guard.get(name).map(|v| v.lock().value.clone()),
+            StaticLock::JnbStandalone(jnb_object_type, _) => {
+                // TODO: check if the variable exists
+                Some(jnb_object_type.get_static_field(name))
+            }
+        }
+    }
+
+    pub fn set(&self, name: &str, value: RuntimeType) -> anyhow::Result<()> {
+        // TODO: check if variable exists and check value type
+
+        match self {
+            StaticLock::Normal(guard) => {
+                guard.get(name).unwrap().lock().value = value;
+            }
+            StaticLock::JnbStandalone(jnb_object_type, _) => {
+                jnb_object_type.set_static_field(name, value)
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]

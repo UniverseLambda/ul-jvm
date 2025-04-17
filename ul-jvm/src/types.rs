@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anyhow::{Context, anyhow, bail};
 use serde::Serialize;
 
-use crate::exec::runtime_type::RuntimeType;
+use crate::exec::{heap::ObjectRef, runtime_type::RuntimeType};
 
 pub type JvmInt = i32;
 pub type JvmLong = i64;
@@ -140,7 +140,6 @@ impl FromStr for JvmMethodDescriptor {
 }
 
 pub trait NativeJvmType {
-    fn to_jvm_type() -> JvmTypeDescriptor;
     fn to_runtime_type(&self) -> RuntimeType;
 
     fn try_from_rt(rt: &RuntimeType) -> Option<Self>
@@ -149,15 +148,10 @@ pub trait NativeJvmType {
 }
 
 pub trait NativeOptJvmType {
-    fn to_opt_jvm_type() -> Option<JvmTypeDescriptor>;
     fn to_opt_runtime_type(&self) -> Option<RuntimeType>;
 }
 
 impl NativeOptJvmType for () {
-    fn to_opt_jvm_type() -> Option<JvmTypeDescriptor> {
-        None
-    }
-
     fn to_opt_runtime_type(&self) -> Option<RuntimeType> {
         None
     }
@@ -167,20 +161,12 @@ impl<T> NativeOptJvmType for T
 where
     T: NativeJvmType,
 {
-    fn to_opt_jvm_type() -> Option<JvmTypeDescriptor> {
-        Some(T::to_jvm_type())
-    }
-
     fn to_opt_runtime_type(&self) -> Option<RuntimeType> {
         Some(self.to_runtime_type())
     }
 }
 
 impl NativeJvmType for i8 {
-    fn to_jvm_type() -> JvmTypeDescriptor {
-        JvmTypeDescriptor::Byte
-    }
-
     fn to_runtime_type(&self) -> RuntimeType {
         RuntimeType::Int(*self as JvmInt)
     }
@@ -197,10 +183,6 @@ impl NativeJvmType for i8 {
 }
 
 impl NativeJvmType for i16 {
-    fn to_jvm_type() -> JvmTypeDescriptor {
-        JvmTypeDescriptor::Short
-    }
-
     fn to_runtime_type(&self) -> RuntimeType {
         RuntimeType::Int(*self as JvmInt)
     }
@@ -217,10 +199,6 @@ impl NativeJvmType for i16 {
 }
 
 impl NativeJvmType for i32 {
-    fn to_jvm_type() -> JvmTypeDescriptor {
-        JvmTypeDescriptor::Int
-    }
-
     fn to_runtime_type(&self) -> RuntimeType {
         RuntimeType::Int(*self as JvmInt)
     }
@@ -237,10 +215,6 @@ impl NativeJvmType for i32 {
 }
 
 impl NativeJvmType for i64 {
-    fn to_jvm_type() -> JvmTypeDescriptor {
-        JvmTypeDescriptor::Long
-    }
-
     fn to_runtime_type(&self) -> RuntimeType {
         RuntimeType::Long(*self)
     }
@@ -257,10 +231,6 @@ impl NativeJvmType for i64 {
 }
 
 impl NativeJvmType for f32 {
-    fn to_jvm_type() -> JvmTypeDescriptor {
-        JvmTypeDescriptor::Float
-    }
-
     fn to_runtime_type(&self) -> RuntimeType {
         RuntimeType::Float(*self)
     }
@@ -277,10 +247,6 @@ impl NativeJvmType for f32 {
 }
 
 impl NativeJvmType for f64 {
-    fn to_jvm_type() -> JvmTypeDescriptor {
-        JvmTypeDescriptor::Double
-    }
-
     fn to_runtime_type(&self) -> RuntimeType {
         RuntimeType::Double(*self)
     }
@@ -297,10 +263,6 @@ impl NativeJvmType for f64 {
 }
 
 impl NativeJvmType for u16 {
-    fn to_jvm_type() -> JvmTypeDescriptor {
-        JvmTypeDescriptor::Char
-    }
-
     fn to_runtime_type(&self) -> RuntimeType {
         RuntimeType::Int(*self as JvmInt)
     }
@@ -311,6 +273,22 @@ impl NativeJvmType for u16 {
     {
         match rt {
             RuntimeType::Int(v) => Some(*v as Self),
+            _ => None,
+        }
+    }
+}
+
+impl NativeJvmType for ObjectRef {
+    fn to_runtime_type(&self) -> RuntimeType {
+        RuntimeType::Class(self.clone())
+    }
+
+    fn try_from_rt(rt: &RuntimeType) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        match rt {
+            RuntimeType::Class(v) => Some(v.clone()),
             _ => None,
         }
     }
