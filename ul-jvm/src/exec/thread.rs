@@ -136,7 +136,6 @@ impl JvmThread {
                 }
                 0x10 => {
                     let sbyte = self.pop_sbyte(env)?;
-
                     jpu.bipush(self, sbyte as JvmInt)?;
                 }
                 0xb2 => {
@@ -155,9 +154,7 @@ impl JvmThread {
                     let local_index = self.pop_ubyte(env)?;
                     jpu.lload(self, local_index)?;
                 }
-                v @ 0x1e | v @ 0x1f | v @ 0x20 | v @ 0x21 => {
-                    jpu.lload(self, v - 0x1e)?;
-                }
+                v @ 0x1e | v @ 0x1f | v @ 0x20 | v @ 0x21 => jpu.lload(self, v - 0x1e)?,
                 0x37 => {
                     let local_index = self.pop_ubyte(env)?;
                     jpu.lstore(self, local_index)?;
@@ -180,12 +177,10 @@ impl JvmThread {
 
                     jpu.istore(self, local_index)?;
                 }
-                v @ 0x3b | v @ 0x3c | v @ 0x3d | v @ 0x3e => {
-                    jpu.istore(self, v - 0x3b)?;
-                }
-                v @ 0x47 | v @ 0x48 | v @ 0x49 | v @ 0x4a => {
-                    jpu.dstore(self, v - 0x47)?;
-                }
+                v @ 0x3b | v @ 0x3c | v @ 0x3d | v @ 0x3e => jpu.istore(self, v - 0x3b)?,
+                v @ 0x47 | v @ 0x48 | v @ 0x49 | v @ 0x4a => jpu.dstore(self, v - 0x47)?,
+                0x60 => jpu.iadd(self)?,
+                0x6c => jpu.idiv(self)?,
                 v => bail!("unknown opcode at 0x{:08X}: 0x{v:02X}", (self.pc - 1)),
             }
         }

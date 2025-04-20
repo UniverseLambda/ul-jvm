@@ -62,6 +62,40 @@ impl<'a> JvmProcessUnit<'a> {
         Ok(())
     }
 
+    pub fn iadd(&self, thread: &mut JvmThread) -> anyhow::Result<()> {
+        trace!("iadd");
+
+        let l = thread.pop_operand_stack()?;
+        let r = thread.pop_operand_stack()?;
+
+        let (l, r) = match (l, r) {
+            (RuntimeType::Int(l), RuntimeType::Int(r)) => (l, r),
+            (l, r) => bail!("expected two ints, got {l:?} and {r:?}"),
+        };
+
+        thread.push_operand_stack(RuntimeType::Int(l + r))?;
+
+        Ok(())
+    }
+
+    pub fn idiv(&self, thread: &mut JvmThread) -> anyhow::Result<()> {
+        trace!("idiv");
+
+        let l = thread.pop_operand_stack()?;
+        let r = thread.pop_operand_stack()?;
+
+        let (l, r) = match (l, r) {
+            (RuntimeType::Int(l), RuntimeType::Int(r)) => (l, r),
+            (l, r) => bail!("expected two ints, got {l:?} and {r:?}"),
+        };
+
+        // TODO: throw an exception when r is 0
+
+        thread.push_operand_stack(RuntimeType::Int(l / r))?;
+
+        Ok(())
+    }
+
     pub fn iload(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
         trace!("iload {local_index}");
 
@@ -275,12 +309,12 @@ impl<'a> JvmProcessUnit<'a> {
     - i2f:                  TODO
     - i2l:                  TODO
     - i2s:                  TODO
-    - iadd:                 TODO
+    - iadd:                 COMPLETED
     - iaload:               TODO
     - iand:                 TODO
     - iastore:              TODO
     - iconst_<i>:           COMPLETED
-    - idiv:                 TODO
+    - idiv:                 COMPLETED
     - if_acmp<cond>:        TODO
     - if_icmp<cond>:        TODO
     - if<cond>:             TODO
