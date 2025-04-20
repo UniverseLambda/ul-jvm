@@ -26,6 +26,7 @@ pub struct JnbObjectTypeDescriptor {
     pub static_methods: &'static [(&'static str, JvmMethodDescriptor)],
 }
 
+#[allow(unused)]
 pub trait JnbObjectType: Debug + Send + Sync {
     fn clinit(&self) -> anyhow::Result<()>;
     fn instanciate_uninit(&self) -> Box<dyn JnbObject>;
@@ -55,6 +56,7 @@ pub trait JnbObjectType: Debug + Send + Sync {
     fn descriptor(&self) -> JnbObjectTypeDescriptor;
 }
 
+#[allow(unused)]
 pub trait JnbObject: Debug + Send + Sync {
     /// name is always checked before
     fn call(

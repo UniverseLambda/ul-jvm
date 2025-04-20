@@ -7,7 +7,7 @@ use std::{
     },
 };
 
-use anyhow::{anyhow, bail};
+use anyhow::anyhow;
 use parking_lot::{Mutex, ReentrantMutex, ReentrantMutexGuard};
 
 use crate::{
@@ -349,7 +349,7 @@ pub enum StaticLock<'a> {
     JnbStandalone(&'a dyn JnbObjectType, ReentrantMutexGuard<'a, ()>),
 }
 
-impl<'a> StaticLock<'a> {
+impl StaticLock<'_> {
     pub fn get(&self, name: &str) -> Option<RuntimeType> {
         match self {
             StaticLock::Normal(guard) => guard.get(name).map(|v| v.lock().value.clone()),

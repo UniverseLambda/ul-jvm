@@ -1,5 +1,5 @@
 use crate::{
-    exec::{JvmExecEnv, heap::ObjectRef, runtime_type::RuntimeType, thread::JvmThread},
+    exec::{heap::ObjectRef, runtime_type::RuntimeType},
     native::jnb::{JnbCallInfo, JnbObject, JnbObjectType, JnbObjectTypeDescriptor, jnb_call},
     types::{JvmInt, JvmMethodDescriptor, JvmTypeDescriptor, NativeOptJvmType},
 };
@@ -21,7 +21,7 @@ impl JnbObjectType for ObjectType {
     }
 
     fn descriptor(&self) -> JnbObjectTypeDescriptor {
-        static METHODS: [(&'static str, JvmMethodDescriptor); 2] = [
+        static METHODS: [(&str, JvmMethodDescriptor); 2] = [
             (
                 "<init>",
                 JvmMethodDescriptor {
@@ -75,15 +75,15 @@ impl JnbObject for Object {
 }
 
 impl Object {
-    pub fn ctor(&self, info: JnbCallInfo) -> anyhow::Result<()> {
+    pub fn ctor(&self, _info: JnbCallInfo) -> anyhow::Result<()> {
         Ok(())
     }
 
-    pub fn hash_code(&self, info: JnbCallInfo) -> anyhow::Result<JvmInt> {
+    pub fn hash_code(&self, _info: JnbCallInfo) -> anyhow::Result<JvmInt> {
         Ok((self as *const Self) as i32)
     }
 
-    pub fn get_class(&self, info: JnbCallInfo) -> anyhow::Result<ObjectRef> {
+    pub fn get_class(&self, _info: JnbCallInfo) -> anyhow::Result<ObjectRef> {
         todo!()
     }
 }
