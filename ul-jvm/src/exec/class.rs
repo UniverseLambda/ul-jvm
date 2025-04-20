@@ -28,8 +28,7 @@ pub struct ClassInstance {
     pub class_type: Class,
     pub is_abstract: bool,
     pub parent: Option<Box<ClassInstance>>,
-    pub fields: Box<[RuntimeType]>,
-    pub jnb: Option<Box<dyn JnbObject>>,
+    pub class_instance_impl: ClassInstanceImpl,
 }
 
 #[derive(Debug, Clone)]
@@ -37,6 +36,25 @@ pub struct Class(Arc<InnerClass>);
 
 impl Class {
     pub fn instanciate_uninit(&self) -> ClassInstance {
+        let instance_impl = match &self.class_impl {
+            ClassImpl::Normal {
+                fields,
+                methods,
+                jnb,
+                ..
+            } => ClassInstanceImpl::Normal {
+                fields: fields
+                    .iter()
+                    .map(|f| (f.name.clone(), Mutex::new(f.clone())))
+                    .collect(),
+                methods: methods.clone(),
+                jnb: jnb.as_ref().map(|jnb| jnb.instanciate_uninit()),
+            },
+            ClassImpl::JnbStandalone { jnb, .. } => ClassInstanceImpl::JnbStandalone {
+                jnb: jnb.instanciate_uninit(),
+            },
+        };
+
         let class_instance = ClassInstance {
             class_type: self.clone(),
             is_abstract: false,
@@ -44,13 +62,15 @@ impl Class {
                 .super_class
                 .as_ref()
                 .map(|c| Box::new(c.instanciate_uninit())),
-            fields: self
-                .fields
-                .iter()
-                .map(|f| f.value.clone())
-                .collect::<Vec<_>>()
-                .into_boxed_slice(),
-            jnb: self.jnb.as_ref().map(|jnb| jnb.instanciate_uninit()),
+            class_instance_impl: instance_impl,
+            // fields: self
+            //     .0
+            //     .fields
+            //     .iter()
+            //     .map(|f| f.value.clone())
+            //     .collect::<Vec<_>>()
+            //     .into_boxed_slice(),
+            // jnb: self.0.jnb.as_ref().map(|jnb| jnb.instanciate_uninit()),
         };
 
         class_instance
@@ -176,22 +196,9 @@ impl Class {
 
     pub fn write_static(&self, name: &String, value: RuntimeType) -> anyhow::Result<()> {
         let lock = self.lock_statics();
-        let var_lock = lock
-            .get(name)
-            .ok_or(anyhow!("no static field at {}@{name}", self.name))?;
 
-        let mut var = var_lock.lock();
-
-        if var.is_final {
-            bail!(
-                "tried to assign static field {}@{name}, but it is declared as final",
-                self.name,
-            );
-        }
-
-        var.value = value;
-
-        Ok(())
+        // TODO: check for final flag
+        lock.set(name, value)
     }
 
     pub fn lock_statics(&self) -> StaticLock {
@@ -321,6 +328,18 @@ pub enum ClassImpl {
     JnbStandalone {
         jnb: Box<dyn JnbObjectType>,
         statics_lock: ReentrantMutex<()>,
+    },
+}
+
+#[derive(Debug)]
+pub enum ClassInstanceImpl {
+    Normal {
+        fields: HashMap<Arc<String>, Mutex<ClassField>>,
+        methods: HashMap<String, Box<[Method]>>,
+        jnb: Option<Box<dyn JnbObject>>,
+    },
+    JnbStandalone {
+        jnb: Box<dyn JnbObject>,
     },
 }
 

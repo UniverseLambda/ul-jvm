@@ -181,7 +181,7 @@ impl JvmThread {
             return Ok(());
         }
 
-        let mut instance = Self::new(class.clone(), method);
+        let mut instance = Self::new(class.clone(), &method);
 
         instance.skip_static_init = true;
         instance.run(env)
