@@ -93,6 +93,20 @@ impl JvmThread {
         Ok(())
     }
 
+    pub fn jmp_to(&mut self, address: usize) {
+        self.pc = address;
+    }
+
+    pub fn ret(&mut self) -> anyhow::Result<()> {
+        let Some(previous_frame) = self.stack.pop() else {
+            return Ok(());
+        };
+
+        self.jmp_to(previous_frame.return_pc);
+
+        Ok(())
+    }
+
     pub fn current_frame(&self) -> anyhow::Result<&StackFrame> {
         self.stack.last().ok_or_else(|| anyhow!("not in a thread"))
     }
@@ -181,6 +195,11 @@ impl JvmThread {
                 v @ 0x47 | v @ 0x48 | v @ 0x49 | v @ 0x4a => jpu.dstore(self, v - 0x47)?,
                 0x60 => jpu.iadd(self)?,
                 0x6c => jpu.idiv(self)?,
+                0xa9 => {
+                    let byte = self.pop_ubyte(env)?;
+                    jpu.ret(self, byte)?;
+                }
+                0xb1 => jpu.vreturn(self)?,
                 v => bail!("unknown opcode at 0x{:08X}: 0x{v:02X}", (self.pc - 1)),
             }
         }
@@ -247,14 +266,14 @@ impl JvmThread {
         ]))
     }
 
-    fn pop_sint(&mut self, env: &JvmExecEnv) -> anyhow::Result<JvmInt> {
-        Ok(i32::from_be_bytes([
-            self.pop_ubyte(env)?,
-            self.pop_ubyte(env)?,
-            self.pop_ubyte(env)?,
-            self.pop_ubyte(env)?,
-        ]))
-    }
+    // fn pop_sint(&mut self, env: &JvmExecEnv) -> anyhow::Result<JvmInt> {
+    //     Ok(i32::from_be_bytes([
+    //         self.pop_ubyte(env)?,
+    //         self.pop_ubyte(env)?,
+    //         self.pop_ubyte(env)?,
+    //         self.pop_ubyte(env)?,
+    //     ]))
+    // }
 
     pub fn dump_to<W: Write>(&self, mut writer: W) -> anyhow::Result<()> {
         writeln!(writer, "========= THREAD DUMP =========")?;

@@ -217,6 +217,27 @@ impl<'a> JvmProcessUnit<'a> {
         Ok(())
     }
 
+    pub fn ret(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
+        trace!("ret {local_index}");
+
+        let value = match thread.read_local(local_index as usize)? {
+            RuntimeType::ReturnAddress(v) => v,
+            v => bail!("expected return address, got {v:?}"),
+        };
+
+        thread.jmp_to(value);
+
+        Ok(())
+    }
+
+    pub fn vreturn(&self, thread: &mut JvmThread) -> anyhow::Result<()> {
+        trace!("vreturn");
+
+        thread.ret()?;
+
+        Ok(())
+    }
+
     // TODO: work on a better way to also look for interfaces
     fn resolve_class(&self, class: &String) -> anyhow::Result<Class> {
         // TODO: load missing classes
@@ -381,8 +402,8 @@ impl<'a> JvmProcessUnit<'a> {
     - pop2:                 TODO
     - putfield:             TODO
     - putstatic:            TODO
-    - ret:                  TODO
-    - return:               TODO
+    - ret:                  DONE
+    - return:               DONE
     - saload:               TODO
     - sastore:              TODO
     - sipush:               TODO

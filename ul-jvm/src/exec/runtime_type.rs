@@ -14,6 +14,7 @@ pub enum RuntimeType {
     Array(ArrayRef),
     Class(ObjectRef),
     InternedString(ConstantJvmUtf8),
+    ReturnAddress(usize),
 }
 
 impl From<LoadableJvmConstant> for RuntimeType {

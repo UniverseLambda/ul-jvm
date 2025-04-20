@@ -71,6 +71,8 @@ fn main() {
 
         panic!("{1}: {:?}", err, "error on main thread")
     };
+
+    debug!("main thread terminated");
 }
 
 pub fn load_unit(full_name: &str, class_path: &[String], dump: bool) -> anyhow::Result<JvmUnit> {
