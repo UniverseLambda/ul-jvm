@@ -169,6 +169,12 @@ impl JvmThread {
                     let local_index = self.pop_ubyte(env)?;
                     jpu.dstore(self, local_index)?;
                 }
+                0x15 => {
+                    let local_index = self.pop_ubyte(env)?;
+
+                    jpu.iload(self, local_index)?;
+                }
+                v @ 0x1a | v @ 0x1b | v @ 0x1c | v @ 0x1d => jpu.iload(self, v - 0x1a)?,
                 0x36 => {
                     let local_index = self.pop_ubyte(env)?;
 

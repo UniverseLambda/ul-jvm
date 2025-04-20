@@ -62,6 +62,20 @@ impl<'a> JvmProcessUnit<'a> {
         Ok(())
     }
 
+    pub fn iload(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
+        trace!("iload {local_index}");
+
+        let local_index = local_index as usize;
+        let value = thread.read_local(local_index)?;
+
+        match value {
+            RuntimeType::Int(_) => (),
+            v => bail!("unexpected value (int expected): {v:?}"),
+        }
+
+        thread.push_operand_stack(value)
+    }
+
     pub fn invokestatic(&self, thread: &mut JvmThread, cp_index: u16) -> anyhow::Result<()> {
         trace!("invokestatic");
 
@@ -108,10 +122,9 @@ impl<'a> JvmProcessUnit<'a> {
         let local_index = local_index as usize;
         let value = thread.pop_operand_stack()?;
 
+        // TODO: check for int type
         thread.store_to_local(local_index, value)?;
         thread.allow_local(local_index + 1)?;
-
-        // TODO: check for int type
 
         Ok(())
     }
@@ -274,8 +287,8 @@ impl<'a> JvmProcessUnit<'a> {
     - ifnonnull:            TODO
     - ifnull:               TODO
     - iinc:                 TODO
-    - iload:                TODO
-    - iload_<n>:            TODO
+    - iload:                COMPLETED
+    - iload_<n>:            COMPLETED
     - imul:                 TODO
     - ineg:                 TODO
     - instanceof:           TODO
