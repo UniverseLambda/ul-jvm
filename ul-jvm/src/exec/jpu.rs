@@ -1,7 +1,7 @@
 use anyhow::{Context, anyhow, bail};
 use log::{debug, trace};
 
-use crate::exec::runtime_type::RuntimeType;
+use crate::{exec::runtime_type::RuntimeType, types::JvmInt};
 
 use super::{JvmExecEnv, class::Class, thread::JvmThread};
 
@@ -16,6 +16,14 @@ impl<'a> JvmProcessUnit<'a> {
             env,
             skip_static_init,
         }
+    }
+
+    pub fn bipush(&self, thread: &mut JvmThread, value: JvmInt) -> anyhow::Result<()> {
+        trace!("bipush {value}");
+
+        thread.push_operand_stack(RuntimeType::Int(value))?;
+
+        Ok(())
     }
 
     pub fn dstore(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
@@ -90,6 +98,20 @@ impl<'a> JvmProcessUnit<'a> {
             method.is_native()
         );
         thread.jmp_jvm_method(target_class.clone(), &method);
+
+        Ok(())
+    }
+
+    pub fn istore(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {
+        trace!("istore {local_index}");
+
+        let local_index = local_index as usize;
+        let value = thread.pop_operand_stack()?;
+
+        thread.store_to_local(local_index, value)?;
+        thread.allow_local(local_index + 1)?;
+
+        // TODO: check for int type
 
         Ok(())
     }
@@ -184,7 +206,7 @@ impl<'a> JvmProcessUnit<'a> {
     - athrow:               TODO
     - baload:               TODO
     - bastore:              TODO
-    - bipush:               TODO
+    - bipush:               COMPLETED
     - caload:               TODO
     - castore:              TODO
     - checkcast:            TODO
@@ -244,7 +266,7 @@ impl<'a> JvmProcessUnit<'a> {
     - iaload:               TODO
     - iand:                 TODO
     - iastore:              TODO
-    - iconst_<i>:           TODO
+    - iconst_<i>:           COMPLETED
     - idiv:                 TODO
     - if_acmp<cond>:        TODO
     - if_icmp<cond>:        TODO
@@ -267,8 +289,8 @@ impl<'a> JvmProcessUnit<'a> {
     - ireturn:              TODO
     - ishl:                 TODO
     - ishr:                 TODO
-    - istore:               TODO
-    - istore_<n>:           TODO
+    - istore:               COMPLETED
+    - istore_<n>:           COMPLETED
     - isub:                 TODO
     - iushr:                TODO
     - ixor:                 TODO

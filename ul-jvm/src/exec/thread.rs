@@ -1,9 +1,9 @@
 use std::io::Write;
 
 use anyhow::{Context, anyhow, bail};
-use log::info;
+use log::{info, trace};
 
-use crate::types::JvmMethodDescriptor;
+use crate::types::{JvmInt, JvmMethodDescriptor};
 
 use super::{
     JvmExecEnv, class::Class, jpu::JvmProcessUnit, method::Method, runtime_type::RuntimeType,
@@ -82,11 +82,13 @@ impl JvmThread {
     }
 
     pub fn allow_local(&mut self, index: usize) -> anyhow::Result<()> {
-        self.current_frame_mut()?
-            .locals
-            .get_mut(index)
-            .ok_or_else(|| anyhow!("{index} out of bound for local storage"))?
-            .replace(RuntimeType::Int(0));
+        let Some(local) = self.current_frame_mut()?.locals.get_mut(index) else {
+            return Ok(());
+        };
+
+        if local.is_none() {
+            *local = Some(RuntimeType::Int(0));
+        }
 
         Ok(())
     }
@@ -124,36 +126,56 @@ impl JvmThread {
         let jpu = JvmProcessUnit::jpu_new(env, self.skip_static_init);
 
         while !self.stack.is_empty() {
-            match self.pop_byte(env)? {
+            let op_code = self.pop_ubyte(env)?;
+
+            trace!("current op-code: 0x{op_code:02x}");
+
+            match op_code {
+                v @ 0x02 | v @ 0x03 | v @ 0x04 | v @ 0x05 | v @ 0x06 | v @ 0x07 | v @ 0x08 => {
+                    jpu.bipush(self, (v as JvmInt) - 0x03)?
+                }
+                0x10 => {
+                    let sbyte = self.pop_sbyte(env)?;
+
+                    jpu.bipush(self, sbyte as JvmInt)?;
+                }
                 0xb2 => {
-                    let short = self.pop_short(env)?;
+                    let short = self.pop_ushort(env)?;
                     jpu.getstatic(self, short)?
                 }
                 0xb8 => {
-                    let short = self.pop_short(env)?;
+                    let short = self.pop_ushort(env)?;
                     jpu.invokestatic(self, short)?;
                 }
                 0x14 => {
-                    let short = self.pop_short(env)?;
+                    let short = self.pop_ushort(env)?;
                     jpu.ld2c_w(self, short)?;
                 }
                 0x16 => {
-                    let local_index = self.pop_byte(env)?;
+                    let local_index = self.pop_ubyte(env)?;
                     jpu.lload(self, local_index)?;
                 }
                 v @ 0x1e | v @ 0x1f | v @ 0x20 | v @ 0x21 => {
                     jpu.lload(self, v - 0x1e)?;
                 }
                 0x37 => {
-                    let local_index = self.pop_byte(env)?;
+                    let local_index = self.pop_ubyte(env)?;
                     jpu.lstore(self, local_index)?;
                 }
                 v @ 0x3f | v @ 0x40 | v @ 0x41 | v @ 0x42 => {
                     jpu.lstore(self, v - 0x3f)?;
                 }
                 0x39 => {
-                    let local_index = self.pop_byte(env)?;
+                    let local_index = self.pop_ubyte(env)?;
                     jpu.dstore(self, local_index)?;
+                }
+                0x36 => {
+                    let local_index = self.pop_ubyte(env)?;
+
+                    jpu.istore(self, local_index)?;
+                }
+                v @ 0x3b | v @ 0x3c | v @ 0x3d | v @ 0x3e => {
+                    jpu.istore(self, v - 0x3b)?;
                 }
                 v @ 0x47 | v @ 0x48 | v @ 0x49 | v @ 0x4a => {
                     jpu.dstore(self, v - 0x47)?;
@@ -202,7 +224,7 @@ impl JvmThread {
         self.pc = pc;
     }
 
-    fn pop_byte(&mut self, env: &JvmExecEnv) -> anyhow::Result<u8> {
+    fn pop_ubyte(&mut self, env: &JvmExecEnv) -> anyhow::Result<u8> {
         let byte = env
             .code
             .get(self.pc)
@@ -213,10 +235,23 @@ impl JvmThread {
         Ok(*byte)
     }
 
-    fn pop_short(&mut self, env: &JvmExecEnv) -> anyhow::Result<u16> {
+    fn pop_sbyte(&mut self, env: &JvmExecEnv) -> anyhow::Result<i8> {
+        self.pop_ubyte(env).map(|v| v as i8)
+    }
+
+    fn pop_ushort(&mut self, env: &JvmExecEnv) -> anyhow::Result<u16> {
         Ok(u16::from_be_bytes([
-            self.pop_byte(env)?,
-            self.pop_byte(env)?,
+            self.pop_ubyte(env)?,
+            self.pop_ubyte(env)?,
+        ]))
+    }
+
+    fn pop_sint(&mut self, env: &JvmExecEnv) -> anyhow::Result<JvmInt> {
+        Ok(i32::from_be_bytes([
+            self.pop_ubyte(env)?,
+            self.pop_ubyte(env)?,
+            self.pop_ubyte(env)?,
+            self.pop_ubyte(env)?,
         ]))
     }
 
