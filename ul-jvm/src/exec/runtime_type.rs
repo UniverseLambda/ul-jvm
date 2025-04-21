@@ -17,6 +17,12 @@ pub enum RuntimeType {
     ReturnAddress(usize),
 }
 
+impl RuntimeType {
+    pub fn is_two_slots(&self) -> bool {
+        matches!(self, Self::Long(_) | Self::Double(_))
+    }
+}
+
 impl From<LoadableJvmConstant> for RuntimeType {
     fn from(value: LoadableJvmConstant) -> Self {
         match value {

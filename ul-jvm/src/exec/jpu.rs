@@ -21,7 +21,7 @@ impl<'a> JvmProcessUnit<'a> {
     pub fn bipush(&self, thread: &mut JvmThread, value: JvmInt) -> anyhow::Result<()> {
         trace!("bipush {value}");
 
-        thread.push_operand_stack(RuntimeType::Int(value))?;
+        thread.push_operand_stack(RuntimeType::Int(value));
 
         Ok(())
     }
@@ -57,7 +57,7 @@ impl<'a> JvmProcessUnit<'a> {
 
         let zarma = target_class.read_static(&field_ref.name)?;
 
-        thread.current_frame_mut()?.operand_stack.push(zarma);
+        thread.push_operand_stack(zarma);
 
         Ok(())
     }
@@ -73,7 +73,7 @@ impl<'a> JvmProcessUnit<'a> {
             (l, r) => bail!("expected two ints, got {l:?} and {r:?}"),
         };
 
-        thread.push_operand_stack(RuntimeType::Int(l + r))?;
+        thread.push_operand_stack(RuntimeType::Int(l + r));
 
         Ok(())
     }
@@ -91,7 +91,7 @@ impl<'a> JvmProcessUnit<'a> {
 
         // TODO: throw an exception when r is 0
 
-        thread.push_operand_stack(RuntimeType::Int(l / r))?;
+        thread.push_operand_stack(RuntimeType::Int(l / r));
 
         Ok(())
     }
@@ -107,7 +107,9 @@ impl<'a> JvmProcessUnit<'a> {
             v => bail!("unexpected value (int expected): {v:?}"),
         }
 
-        thread.push_operand_stack(value)
+        thread.push_operand_stack(value);
+
+        Ok(())
     }
 
     pub fn invokestatic(&self, thread: &mut JvmThread, cp_index: u16) -> anyhow::Result<()> {
@@ -145,7 +147,7 @@ impl<'a> JvmProcessUnit<'a> {
             target_class.name,
             method.is_native()
         );
-        thread.jmp_jvm_method(target_class.clone(), &method);
+        thread.jmp_jvm_method(target_class.clone(), &method)?;
 
         Ok(())
     }
@@ -180,7 +182,7 @@ impl<'a> JvmProcessUnit<'a> {
             });
 
         if let Some(value) = value {
-            thread.push_operand_stack(value)?;
+            thread.push_operand_stack(value);
         } else {
             // TODO: implement this case, but I'm not quite sure what I am to expect from here (kinda tired rn)
             todo!("unsupported ld2c_w constant pool value at {cp_index}");
@@ -201,7 +203,9 @@ impl<'a> JvmProcessUnit<'a> {
             v => bail!("unexpected value (long expected): {v:?}"),
         }
 
-        thread.push_operand_stack(value)
+        thread.push_operand_stack(value);
+
+        Ok(())
     }
 
     pub fn lstore(&self, thread: &mut JvmThread, local_index: u8) -> anyhow::Result<()> {

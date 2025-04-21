@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use anyhow::{Context, anyhow, bail};
+use anyhow::{anyhow, bail};
 use log::{info, trace};
 
 use crate::types::{JvmInt, JvmMethodDescriptor};
@@ -13,6 +13,7 @@ use super::{
 pub struct JvmThread {
     pub pc: usize,
     pub stack: Vec<StackFrame>,
+    pub operand_stack: Vec<RuntimeType>,
     skip_static_init: bool,
 }
 
@@ -21,7 +22,6 @@ pub struct StackFrame {
     pub return_pc: usize,
     pub current_class: Class,
     pub locals: Box<[Option<RuntimeType>]>,
-    pub operand_stack: Vec<RuntimeType>,
 }
 
 impl JvmThread {
@@ -30,6 +30,7 @@ impl JvmThread {
             pc: 0,
             stack: vec![],
             skip_static_init: false,
+            operand_stack: vec![],
         };
 
         instance.call_intro(
@@ -102,6 +103,7 @@ impl JvmThread {
             return Ok(());
         };
 
+        self.operand_stack.clear();
         self.jmp_to(previous_frame.return_pc);
 
         Ok(())
@@ -118,20 +120,13 @@ impl JvmThread {
     }
 
     pub fn pop_operand_stack(&mut self) -> anyhow::Result<RuntimeType> {
-        self.current_frame_mut()
-            .context("pop_operand_stack")?
-            .operand_stack
+        self.operand_stack
             .pop()
             .ok_or_else(|| anyhow!("tried to pop an empty operand stack"))
     }
 
-    pub fn push_operand_stack(&mut self, value: RuntimeType) -> anyhow::Result<()> {
-        self.current_frame_mut()
-            .context("push_operand_stack")?
-            .operand_stack
-            .push(value);
-
-        Ok(())
+    pub fn push_operand_stack(&mut self, value: RuntimeType) {
+        self.operand_stack.push(value);
     }
 
     pub fn run(&mut self, env: &JvmExecEnv) -> anyhow::Result<()> {
@@ -229,8 +224,33 @@ impl JvmThread {
         instance.run(env)
     }
 
-    pub fn jmp_jvm_method(&mut self, class: Class, method: &Method) {
+    pub fn jmp_jvm_method(&mut self, class: Class, method: &Method) -> anyhow::Result<()> {
+        if self.operand_stack.len() != method.parameters().len() {
+            bail!(
+                "expected {} parameters in operand stack, but got {}",
+                method.parameters().len(),
+                self.operand_stack.len()
+            );
+        }
+
         self.call_intro(class, method.start_pc().unwrap(), method.local_count());
+
+        let mut offset = 0;
+
+        let params = self.operand_stack.drain(..).collect::<Vec<RuntimeType>>();
+
+        for (idx, param) in params.into_iter().enumerate() {
+            let doubled_size = param.is_two_slots();
+
+            self.store_to_local(idx + offset, param)?;
+
+            if doubled_size {
+                offset += 1;
+                self.forbid_local(idx + offset)?;
+            }
+        }
+
+        Ok(())
     }
 
     fn call_intro(&mut self, class: Class, pc: usize, local_count: usize) {
@@ -238,7 +258,6 @@ impl JvmThread {
             return_pc: self.pc,
             current_class: class,
             locals: vec![Some(RuntimeType::Int(0)); local_count].into_boxed_slice(),
-            operand_stack: vec![],
         });
 
         self.pc = pc;
@@ -284,14 +303,14 @@ impl JvmThread {
             writeln!(writer, "- frame {idx}")?;
             writeln!(writer, "  class:     {}", frame.current_class.name)?;
             writeln!(writer, "  return PC: {}", frame.return_pc)?;
-            writeln!(writer, "  OS:")?;
-            for (idx, elem) in frame.operand_stack.iter().enumerate().rev() {
-                writeln!(writer, "  - [{idx}]      {elem:?}")?;
-            }
             writeln!(writer, "  locals:")?;
             for (idx, elem) in frame.locals.iter().enumerate() {
                 writeln!(writer, "  - [{idx}]      {elem:?}")?;
             }
+        }
+        writeln!(writer, "OS:")?;
+        for (idx, elem) in self.operand_stack.iter().enumerate().rev() {
+            writeln!(writer, "- [{idx}]      {elem:?}")?;
         }
 
         Ok(())
